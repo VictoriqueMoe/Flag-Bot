@@ -80,7 +80,7 @@ export class FlagReaction {
             return;
         }
         const role = await this._flagManager.getRoleFromAlpha2Code(flagEmoji, guildId, true);
-        if (!role || await this._hasDupes(guildMember)) {
+        if (!role) {
             try {
                 await this._removeReaction(flagEmoji, guildMember, message);
             } catch {
