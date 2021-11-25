@@ -1,0 +1,44 @@
+{
+  "name": "flag-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/Main.ts",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VictoriqueMoe/Flag-Bot.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/VictoriqueMoe/Flag-Bot/issues"
+  },
+  "homepage": "https://github.com/VictoriqueMoe/Flag-Bot#readme",
+  "dependencies": {
+    "@discordx/importer": "^1.1.2",
+    "@discordx/utilities": "^3.1.5",
+    "better-sqlite3": "^7.4.5",
+    "country-flag-emoji": "^1.0.3",
+    "discord-api-types": "^0.24.0",
+    "discord.js": "^13.3.1",
+    "discordx": "^9.0.1",
+    "dotenv": "^10.0.0",
+    "emoji-unicode": "^2.0.1",
+    "i18n-iso-countries": "^7.1.0",
+    "reflect-metadata": "^0.1.13",
+    "tsyringe": "^4.6.0",
+    "typeorm": "^0.2.41"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.10",
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "@typescript-eslint/parser": "^5.4.0",
+    "eslint": "^8.3.0",
+    "ts-node": "^10.4.0",
+    "tslib": "^2.3.1",
+    "typescript": "^4.5.2"
+  }
+}

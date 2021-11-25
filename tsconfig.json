@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "target": "ES2021",
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "noEmit": false,
+    "watch": false,
+    "noImplicitOverride": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": [
+      "es2020",
+      "esnext.asynciterable"
+    ],
+    "moduleResolution": "node",
+    "outDir": "./build",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "./build"
+  ],
+  "indent": [
+    true,
+    "spaces",
+    2
+  ]
+}
