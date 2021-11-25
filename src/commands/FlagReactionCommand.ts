@@ -52,10 +52,10 @@ export class FlagReactionCommand {
             ephemeral: true
         });
         const reportMap = await this._flagManager.getReportMap(interaction.guildId);
-        const csvMap = [];
+        const csvMap: [string, number, string[]][] = [];
         for (const [role, members] of reportMap) {
             const memberArr = members.map(member => member.user.tag);
-            csvMap.push([role.name, memberArr]);
+            csvMap.push([role.name, memberArr.length, memberArr]);
         }
         const csvStr = csvMap.map(s => s.join(",")).join("\r\n");
         if (!ObjectUtil.validString(csvStr)) {
