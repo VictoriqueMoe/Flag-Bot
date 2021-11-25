@@ -138,7 +138,7 @@ export class FlagManager extends BaseDAO<FlagModel> {
         return newRole;
     }
 
-    public getCountryFromFlag(flag: string): string {
+    private getCountryFromFlag(flag: string): string {
         const unicode = "U+" + emojiUnicode(flag).toUpperCase().split(" ").join(" U+");
         for (const countryData of countryFlagEmoji.list) {
             if (countryData.unicode === unicode) {

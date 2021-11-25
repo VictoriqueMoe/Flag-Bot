@@ -53,6 +53,9 @@ export class FlagReaction {
 
     @On("messageReactionAdd")
     private async messageReactionAdd([reaction, user]: ArgsOf<"messageReactionAdd">, client: Client): Promise<void> {
+        if (user.bot) {
+            return;
+        }
         const {message} = reaction;
         const messageOgPoser = message.member;
         const emoji = reaction.emoji;
