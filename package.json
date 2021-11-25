@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/Main.ts",
+    "start_p2": "pm2 start ../ecosystem/ecosystem.config.js --only flag-bot",
+    "build_and_start": "npm run build & npm run restart_p2",
     "build": "tsc"
   },
   "repository": {

@@ -43,7 +43,7 @@ export class Main {
                 Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
                 Intents.FLAGS.GUILD_VOICE_STATES
             ],
-            botGuilds: [(client) => client.guilds.cache.map((guild) => guild.id)],
+            botGuilds: [(client: Client): string[] => client.guilds.cache.map((guild) => guild.id)],
             silent: false
         });
         registerInstance(connection, client);
