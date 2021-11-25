@@ -1,8 +1,20 @@
 import {injectable} from "tsyringe";
-import {ApplicationCommandMixin, Discord, Permission, SimpleCommandMessage, Slash, SlashOption} from "discordx";
-import {ApplicationCommandPermissions, CommandInteraction, Guild, Permissions} from "discord.js";
+import {
+    ApplicationCommandMixin,
+    ArgsOf,
+    Client,
+    Discord,
+    On,
+    Permission,
+    SimpleCommandMessage,
+    Slash,
+    SlashOption
+} from "discordx";
+import {ApplicationCommandPermissions, CommandInteraction, Guild, Message, Permissions} from "discord.js";
 import {InteractionUtils, ObjectUtil} from "../utils/Utils";
 import {FlagManager} from "../model/manager/FlagManager";
+import {getRepository} from "typeorm";
+import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model";
 
 @Discord()
 @Permission(false)
@@ -25,6 +37,23 @@ export class FlagReactionCommand {
     public constructor(private _flagManager: FlagManager) {
     }
 
+    @On("messageDelete")
+    private async messageDeleted([message]: ArgsOf<"messageDelete">, client: Client): Promise<void> {
+        const messageId = message.id;
+        const repo = getRepository(InteractionFlagModel);
+        if (message.author.id !== message.guild.me.id) {
+            return;
+        }
+        try {
+            await repo.delete({
+                messageId,
+                guildId: message.guildId
+            });
+        } catch {
+
+        }
+    }
+
     @Slash("flagreact", {
         description: "set the initial flag reaction message"
     })
@@ -36,10 +65,35 @@ export class FlagReactionCommand {
             custom: string,
         interaction: CommandInteraction
     ): Promise<void> {
-        if (ObjectUtil.validString(custom)) {
-            return InteractionUtils.replyOrFollowUp(interaction, custom);
+        await interaction.deferReply();
+        const repo = getRepository(InteractionFlagModel);
+        const count = await repo.count({
+            where: {
+                guildId: interaction.guildId
+            }
+        });
+        if (count !== 0) {
+            setTimeout(args => {
+                interaction.deleteReply();
+            }, 4000);
+            return InteractionUtils.replyOrFollowUp(interaction, "Only one `/flagreact` can exist at one time");
         }
-        return InteractionUtils.replyOrFollowUp(interaction, "Please react with the flag of your country to get the role!");
+        const messageReply = await interaction.followUp({
+            fetchReply: true,
+            content: ObjectUtil.validString(custom) ? custom : "Please react with the flag of your country to get the role!"
+        });
+        if (!(messageReply instanceof Message)) {
+            return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
+        }
+
+        try {
+            await repo.insert({
+                guildId: interaction.guildId,
+                messageId: messageReply.id
+            });
+        } catch {
+            return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
+        }
     }
 
     @Slash("makereport", {

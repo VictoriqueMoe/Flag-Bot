@@ -3,6 +3,8 @@ import {FlagManager} from "../model/manager/FlagManager";
 import {injectable} from "tsyringe";
 import {ArrayUtils, ObjectUtil} from "../utils/Utils";
 import {GuildMember, Message, MessageReaction, PartialMessage} from "discord.js";
+import {getRepository} from "typeorm";
+import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model";
 
 @Discord()
 @injectable()
@@ -68,6 +70,16 @@ export class FlagReaction {
             user: user.id
         });
         if (messageOgPoser.id !== guildMember.guild.me.id) {
+            return;
+        }
+        const interactionModel = getRepository(InteractionFlagModel);
+        const modelFromDb = await interactionModel.findOne({
+            where: {
+                guildId: message.guildId,
+                messageId: message.id
+            }
+        });
+        if (!modelFromDb) {
             return;
         }
         const guildId = guildMember.guild.id;
