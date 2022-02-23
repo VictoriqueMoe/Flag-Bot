@@ -1,6 +1,5 @@
 import {ObjectUtil} from "../utils/Utils";
-import {EntityManager, getManager, QueryFailedError, Repository} from "typeorm";
-import {EntityTarget} from "typeorm/common/EntityTarget";
+import {DeepPartial, EntityManager, EntityTarget, getManager, QueryFailedError, Repository} from "typeorm";
 
 export abstract class BaseDAO<T> {
 
@@ -13,19 +12,20 @@ export abstract class BaseDAO<T> {
         return getManager().create(instance, data);
     }
 
-    protected async commitToDatabase(repo: Repository<T> | EntityManager, model: T[], modelClass?: EntityTarget<T>, opts: {
+    protected async commitToDatabase(repo: Repository<T> | EntityManager, model: DeepPartial<T>[], modelClass?: EntityTarget<T>, opts: {
         silentOnDupe?: boolean
     } = {}): Promise<T[]> {
         let errorStr = "";
+        let result: T[];
         try {
             try {
                 if (repo instanceof EntityManager) {
                     if (!modelClass) {
                         throw new Error("Must supply class");
                     }
-                    return repo.save(modelClass, model);
+                    result = await repo.save(modelClass, model);
                 } else {
-                    return repo.save(model);
+                    result = await repo.save(model);
                 }
             } catch (e) {
                 if (e instanceof QueryFailedError) {
@@ -50,6 +50,7 @@ export abstract class BaseDAO<T> {
                 console.error(`An error occurred: ${errorStr}`);
             }
         }
+        return result;
     }
 }
 

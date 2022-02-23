@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import * as dotenv from "dotenv";
 import {container} from "tsyringe";
-import {Client, DIService, SimpleCommandMessage} from "discordx";
+import {Client, DIService} from "discordx";
 import {createConnection, useContainer} from "typeorm";
 import {Intents} from "discord.js";
 import {importx} from "@discordx/importer";
@@ -25,12 +25,7 @@ export class Main {
         });
         const client = new Client({
             simpleCommand: {
-                prefix: "!",
-                responses: {
-                    unauthorised: (command: SimpleCommandMessage): void => {
-                        console.log(command);
-                    }
-                }
+                prefix: "!"
             },
             intents: [
                 Intents.FLAGS.GUILDS,
