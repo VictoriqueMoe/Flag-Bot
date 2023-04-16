@@ -15,11 +15,15 @@ export class OnReady extends BaseDAO {
         super();
     }
 
+    public async init(): Promise<void> {
+        await this.cleanUpGuilds();
+    }
+
     @On()
     private async ready([client]: ArgsOf<"ready">): Promise<void> {
         await client.user.setActivity('FLAGS!!', {type: ActivityType.Playing});
         await this.populateGuilds();
-        await this.cleanUpGuilds();
+        await this.init();
         await this.initAppCommands();
         await this.loadMessages();
         console.log("Bot logged in");
@@ -78,7 +82,7 @@ export class OnReady extends BaseDAO {
         });
     }
 
-    private initAppCommands(): Promise<void> {
+    initAppCommands(): Promise<void> {
         return this._client.initApplicationCommands();
     }
 
