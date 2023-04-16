@@ -82,7 +82,7 @@ export class OnReady extends BaseDAO {
         });
     }
 
-    initAppCommands(): Promise<void> {
+    public initAppCommands(): Promise<void> {
         return this._client.initApplicationCommands();
     }
 
