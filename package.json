@@ -5,11 +5,15 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "ts-node src/Main.ts",
-    "start_p2": "pm2 start ../ecosystem/ecosystem.config.js --only flag-bot",
-    "restart_p2": "pm2 restart ../ecosystem/ecosystem.config.js --only flag-bot",
-    "build_and_start": "npm run build & npm run restart_p2",
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "node --loader ts-node/esm/transpile-only src/Main.ts",
+    "serve": "node build/Main.js",
+    "lint": "eslint . --ext .ts --max-warnings 0",
+    "lint-fix": "eslint . --ext .ts --fix",
+    "start": "node build/Main.js",
+    "start_js": "npm run build & node build/Main.js",
+    "rebuild_and_start": "npm run build & npm run start",
+    "update_deps": "npx npm-check-updates"
   },
   "repository": {
     "type": "git",

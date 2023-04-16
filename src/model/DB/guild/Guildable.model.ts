@@ -1,7 +1,7 @@
-import {FlagModel} from "./Flag.model.js";
+import type {FlagModel} from "./Flag.model.js";
 import {Column, Entity, OneToMany} from "typeorm";
 import {IGuildAware} from "../IGuildAware.js";
-import {InteractionFlagModel} from "./InteractionFlag.model.js";
+import type {InteractionFlagModel} from "./InteractionFlag.model.js";
 
 @Entity()
 export class GuildableModel implements IGuildAware {
@@ -11,9 +11,9 @@ export class GuildableModel implements IGuildAware {
     })
     public guildId: string;
 
-    @OneToMany(() => FlagModel, flagModel => flagModel.guildableModel)
+    @OneToMany("FlagModel", "guildableModel")
     public flagModel: FlagModel[];
 
-    @OneToMany(() => InteractionFlagModel, interactionFlagModel => interactionFlagModel.guildableModel)
+    @OneToMany("InteractionFlagModel", "guildableModel")
     public interactionFlagModel: InteractionFlagModel[];
 }
