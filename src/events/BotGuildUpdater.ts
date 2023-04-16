@@ -19,7 +19,7 @@ export class BotGuildUpdater extends BaseDAO {
         const model = DbUtils.build(GuildableModel, {
             guildId: guild.id
         });
-        await this.ds.manager.save(GuildableModel, [model]);
+        await this.ds.manager.save(GuildableModel, model);
         return this._onReady.init().then(() => {
             console.info(`Joined server "${guild.name}"`);
         }).catch(e => {
