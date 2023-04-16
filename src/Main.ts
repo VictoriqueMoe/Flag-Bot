@@ -1,52 +1,48 @@
 import "reflect-metadata";
 import * as dotenv from "dotenv";
+import {Client, ClientOptions, DIService, tsyringeDependencyRegistryEngine} from "discordx";
 import {container} from "tsyringe";
-import {Client, DIService} from "discordx";
-import {createConnection, useContainer} from "typeorm";
-import {Intents} from "discord.js";
-import {importx} from "@discordx/importer";
-import {moduleRegistrar, registerInstance} from "./DI/moduleRegistrar";
+import {registerInstance} from "./DI/moduleRegistrar.js";
+import {DataSource} from "typeorm";
+import {dirname, importx} from "@discordx/importer";
+import {IntentsBitField} from "discord.js";
 
-dotenv.config({path: __dirname + '/../.env'});
+dotenv.config();
 
 export class Main {
     public static async start(): Promise<void> {
-        DIService.container = container;
-        await moduleRegistrar();
-        useContainer(
-            {get: someClass => container.resolve(someClass as any)},
-        );
-        const connection = await createConnection({
+        DIService.engine = tsyringeDependencyRegistryEngine.setInjector(container);
+        const datasource = new DataSource({
             type: "better-sqlite3",
             database: "database.sqlite",
             synchronize: true,
-            key: process.env.sqlIte_key,
-            entities: [__dirname + '/model/DB/**/*.model.{ts,js}'],
-        });
-        const client = new Client({
-            simpleCommand: {
-                prefix: "!"
+            cache: {
+                duration: 1000
             },
-            intents: [
-                Intents.FLAGS.GUILDS,
-                Intents.FLAGS.GUILD_MESSAGES,
-                Intents.FLAGS.GUILD_MEMBERS,
-                Intents.FLAGS.GUILD_BANS,
-                Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
-                Intents.FLAGS.GUILD_PRESENCES,
-                Intents.FLAGS.DIRECT_MESSAGES,
-                Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
-                Intents.FLAGS.GUILD_VOICE_STATES
-            ],
-            botGuilds: [(client: Client): string[] => client.guilds.cache.map((guild) => guild.id)],
-            silent: false
+            entities: [`${dirname(import.meta.url)}/model/DB/**/*.model.{ts,js}`]
         });
-        registerInstance(connection, client);
-        await importx(`${__dirname}/{commands,events}/**/*.{ts,js}`);
-        await client.login(process.env.token);
+
+        const connectedDs = await datasource.initialize();
+        if (!connectedDs.isInitialized) {
+            throw new Error("Unable to initialise database");
+        }
+        const clientOps: ClientOptions = {
+            intents: [
+                IntentsBitField.Flags.Guilds,
+                IntentsBitField.Flags.GuildMessages,
+                IntentsBitField.Flags.GuildMembers,
+                IntentsBitField.Flags.GuildMessageReactions,
+                IntentsBitField.Flags.GuildIntegrations
+            ],
+            silent: false,
+        };
+
+
+        const client = new Client(clientOps);
+        registerInstance(connectedDs, client);
+        await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`);
+        await client.login(process.env.TOKEN);
     }
 }
 
-((async (): Promise<void> => {
-    await Main.start();
-})());
+await Main.start();

@@ -1,20 +1,21 @@
-import {ArgsOf, Client, Discord, On} from "discordx";
-import {FlagManager} from "../model/manager/FlagManager";
+import {FlagManager} from "../model/manager/FlagManager.js";
+import {ArgsOf, Discord, On} from "discordx";
 import {injectable} from "tsyringe";
-import {ArrayUtils, ObjectUtil} from "../utils/Utils";
+import {ArrayUtils, ObjectUtil} from "../utils/Utils.js";
+import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
 import {GuildMember, Message, MessageReaction, PartialMessage} from "discord.js";
-import {getRepository} from "typeorm";
-import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model";
+import {BaseDAO} from "../DAO/BaseDAO.js";
 
 @Discord()
 @injectable()
-export class FlagReaction {
+export class FlagReaction extends BaseDAO {
 
     public constructor(private _flagManager: FlagManager) {
+        super();
     }
 
-    @On("roleDelete")
-    private async roleDeleted([role]: ArgsOf<"roleDelete">, client: Client): Promise<void> {
+    @On()
+    private async roleDelete([role]: ArgsOf<"roleDelete">): Promise<void> {
         const {id} = role;
         try {
             await this._flagManager.removeRoleBinding(role.guild.id, id, false);
@@ -23,8 +24,8 @@ export class FlagReaction {
         }
     }
 
-    @On("messageReactionRemove")
-    private async messageReactionRemove([reaction, user]: ArgsOf<"messageReactionRemove">, client: Client): Promise<void> {
+    @On()
+    private async messageReactionRemove([reaction, user]: ArgsOf<"messageReactionRemove">): Promise<void> {
         if (user.bot) {
             return;
         }
@@ -33,7 +34,7 @@ export class FlagReaction {
             force: true,
             user: user.id
         });
-        if (messageOgPoser.id !== guildMember.guild.me.id) {
+        if (messageOgPoser.id !== guildMember.guild.members.me.id) {
             return;
         }
         const emoji = reaction.emoji;
@@ -53,8 +54,8 @@ export class FlagReaction {
         }
     }
 
-    @On("messageReactionAdd")
-    private async messageReactionAdd([reaction, user]: ArgsOf<"messageReactionAdd">, client: Client): Promise<void> {
+    @On()
+    private async messageReactionAdd([reaction, user]: ArgsOf<"messageReactionAdd">): Promise<void> {
         if (user.bot) {
             return;
         }
@@ -69,10 +70,10 @@ export class FlagReaction {
             force: true,
             user: user.id
         });
-        if (messageOgPoser.id !== guildMember.guild.me.id) {
+        if (messageOgPoser.id !== guildMember.guild.members.me.id) {
             return;
         }
-        const interactionModel = getRepository(InteractionFlagModel);
+        const interactionModel = this.ds.getRepository(InteractionFlagModel);
         const modelFromDb = await interactionModel.findOne({
             where: {
                 guildId: message.guildId,

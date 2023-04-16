@@ -1,23 +1,23 @@
+import {BaseDAO} from "../DAO/BaseDAO.js";
+import {ArgsOf, Client, Discord, On, RestArgsOf} from "discordx";
+import {BaseGuildTextChannel, ChannelType} from "discord.js";
 import {injectable} from "tsyringe";
-import {ArgsOf, Client, Discord, On} from "discordx";
-import {BaseDAO, UniqueViolationError} from "../DAO/BaseDAO";
-import {getManager, getRepository, Repository, Transaction, TransactionRepository} from "typeorm";
-import {GuildableModel} from "../model/DB/guild/Guildable.model";
-import {InteractionUtils} from "../utils/Utils";
-import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model";
-import {BaseGuildTextChannel} from "discord.js";
+import {ArrayUtils, DbUtils, InteractionUtils} from "../utils/Utils.js";
+import {GuildableModel} from "../model/DB/guild/Guildable.model.js";
+import {ActivityType, InteractionType} from "discord-api-types/v10";
+import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
 
 @Discord()
 @injectable()
-export class OnReady extends BaseDAO<any> {
+export class OnReady extends BaseDAO {
 
     public constructor(private _client: Client) {
         super();
     }
 
-    @On("ready")
-    private async initialize([client]: ArgsOf<"ready">): Promise<void> {
-        await client.user.setActivity('FLAGS!!', {type: 'PLAYING'});
+    @On()
+    private async ready([client]: ArgsOf<"ready">): Promise<void> {
+        await client.user.setActivity('FLAGS!!', {type: ActivityType.Playing});
         await this.populateGuilds();
         await this.cleanUpGuilds();
         await this.initAppCommands();
@@ -25,68 +25,87 @@ export class OnReady extends BaseDAO<any> {
         console.log("Bot logged in");
     }
 
-    @On("rateLimit")
-    private async rateLimit([rateLimitData]: ArgsOf<"rateLimit">, client: Client): Promise<void> {
+    @On.rest()
+    private rateLimited([rateLimitData]: RestArgsOf<"rateLimited">): void {
         console.warn(rateLimitData);
     }
 
-    @On("interactionCreate")
-    private async intersectionInit([interaction]: ArgsOf<"interactionCreate">): Promise<void> {
+    @On()
+    private async interactionCreate([interaction]: ArgsOf<"interactionCreate">, client: Client): Promise<void> {
         try {
-            await this._client.executeInteraction(interaction);
+            await client.executeInteraction(interaction);
         } catch (e) {
-            console.error(e);
-            if (interaction.isApplicationCommand() || interaction.isMessageComponent()) {
-                return InteractionUtils.replyOrFollowUp(interaction, "Something went wrong, please notify my developer: <@697417252320051291>");
+            if (e instanceof Error) {
+                console.error(e.message);
+            } else {
+                console.error(e);
+            }
+            const me = interaction?.guild?.members?.me ?? interaction.user;
+            if (interaction.type === InteractionType.ApplicationCommand || interaction.type === InteractionType.MessageComponent) {
+                const channel = interaction.channel;
+                if (channel && (channel.type !== ChannelType.GuildText || !channel.permissionsFor(me).has("SendMessages"))) {
+                    console.error(`cannot send warning message to this channel`, interaction);
+                    return;
+                }
+                try {
+                    await InteractionUtils.replyOrFollowUp(
+                        interaction,
+                        "Something went wrong, please notify my developer: <@697417252320051291>"
+                    );
+                } catch (e) {
+                    console.error(e);
+                }
             }
         }
     }
 
 
-    private async populateGuilds(): Promise<void> {
+    private populateGuilds(): Promise<void> {
         const guilds = this._client.guilds.cache;
-        return getManager().transaction(async transactionManager => {
+        return this.ds.transaction(async transactionManager => {
             for (const [guildId] of guilds) {
-                const guild = BaseDAO.build(GuildableModel, {
-                    guildId
-                });
-                try {
-                    await super.commitToDatabase(transactionManager, [guild], GuildableModel, {
-                        silentOnDupe: true
-                    });
-                } catch (e) {
-                    if (!(e instanceof UniqueViolationError)) {
-                        throw e;
+                if (await transactionManager.count(GuildableModel, {
+                    where: {
+                        guildId
                     }
+                }) === 0) {
+                    const guild = DbUtils.build(GuildableModel, {
+                        guildId
+                    });
+                    await transactionManager.save(GuildableModel, guild);
                 }
             }
         });
     }
 
-    private async initAppCommands(): Promise<void> {
-        await this._client.initApplicationCommands();
-        await this._client.initApplicationPermissions();
+    private initAppCommands(): Promise<void> {
+        return this._client.initApplicationCommands();
     }
 
-    @Transaction()
-    private async cleanUpGuilds(@TransactionRepository(GuildableModel) repo?: Repository<GuildableModel>): Promise<void> {
+    private async cleanUpGuilds(): Promise<void> {
+        const transactionManager = this.ds.manager;
         const guildsJoined = [...this._client.guilds.cache.keys()];
+        if (!ArrayUtils.isValidArray(guildsJoined)) {
+            await transactionManager.clear(GuildableModel);
+            await this.ds.queryResultCache.clear();
+            return;
+        }
         for (const guildsJoinedId of guildsJoined) {
-            const guildModels = await repo.find({
+            const guildModels = await transactionManager.find(GuildableModel, {
                 where: {
                     "guildId": guildsJoinedId
                 }
             });
             if (!guildModels) {
-                await repo.delete({
-                    guildId: guildsJoinedId
+                await transactionManager.delete(GuildableModel, {
+                    guildId: guildsJoinedId,
                 });
             }
         }
     }
 
     private async loadMessages(): Promise<void> {
-        const repo = getRepository(InteractionFlagModel);
+        const repo = this.ds.getRepository(InteractionFlagModel);
         const allGuilds = this._client.guilds.cache;
         for (const [id, guild] of allGuilds) {
             const messagePost = await repo.findOne({
@@ -105,7 +124,8 @@ export class OnReady extends BaseDAO<any> {
                     continue;
                 }
                 try {
-                    const message = await fetchedChannel.messages.fetch(messageId, {
+                    const message = await fetchedChannel.messages.fetch({
+                        message: messageId,
                         force: true,
                         cache: true
                     });

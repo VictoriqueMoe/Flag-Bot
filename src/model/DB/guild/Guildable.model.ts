@@ -1,7 +1,7 @@
-import {IGuildAware} from "../IGuildAware";
+import {FlagModel} from "./Flag.model.js";
 import {Column, Entity, OneToMany} from "typeorm";
-import {FlagModel} from "./Flag.model";
-import {InteractionFlagModel} from "./InteractionFlag.model";
+import {IGuildAware} from "../IGuildAware.js";
+import {InteractionFlagModel} from "./InteractionFlag.model.js";
 
 @Entity()
 export class GuildableModel implements IGuildAware {

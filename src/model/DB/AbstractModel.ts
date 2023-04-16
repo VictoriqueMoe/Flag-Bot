@@ -1,6 +1,5 @@
-import {Column, CreateDateColumn, UpdateDateColumn} from "typeorm";
-import {RelationOptions} from "typeorm/decorator/options/RelationOptions";
-import {IGuildAware} from "./IGuildAware";
+import {IGuildAware} from "./IGuildAware.js";
+import {Column, CreateDateColumn, RelationOptions, UpdateDateColumn} from "typeorm";
 
 export abstract class AbstractModel implements IGuildAware {
 

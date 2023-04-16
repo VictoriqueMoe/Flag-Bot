@@ -6,10 +6,9 @@ import {BaseDAO} from "../../DAO/BaseDAO";
 import {GuildableModel} from "../DB/guild/Guildable.model";
 
 @singleton()
-export class GuildManager extends BaseDAO<GuildableModel> {
+export class GuildManager extends BaseDAO {
 
-
-    constructor(private _client: Client) {
+    public constructor(private _client: Client) {
         super();
     }
 
@@ -23,7 +22,7 @@ export class GuildManager extends BaseDAO<GuildableModel> {
         return retArray;
     }
 
-    public async getGuild(guildId: string): Promise<Guild | null> {
+    public getGuild(guildId: string): Promise<Guild | null> {
         return this._client.guilds.fetch(guildId);
     }
 

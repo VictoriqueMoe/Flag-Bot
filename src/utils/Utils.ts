@@ -1,10 +1,23 @@
-import {
-    BaseCommandInteraction,
-    ContextMenuInteraction,
-    GuildMember,
-    Message,
-    MessageComponentInteraction
-} from "discord.js";
+import {CommandInteraction, InteractionReplyOptions, MessageComponentInteraction} from "discord.js";
+import {DataSource, DeepPartial, EntityTarget} from "typeorm";
+import {container} from "tsyringe";
+
+export class DbUtils {
+
+    private static _ds: DataSource;
+
+    /**
+     * Build an entity by injecting props as an object
+     * @param instance
+     * @param data
+     */
+    public static build<T>(instance: EntityTarget<T>, data: DeepPartial<T>): T {
+        if (!DbUtils._ds) {
+            DbUtils._ds = container.resolve(DataSource);
+        }
+        return DbUtils._ds.manager.create(instance, data);
+    }
+}
 
 export class ObjectUtil {
 
@@ -71,41 +84,22 @@ export namespace ArrayUtils {
 
 export namespace InteractionUtils {
 
-    export function getUserFromUserContextInteraction(interaction: ContextMenuInteraction): GuildMember | undefined {
-        const memberId = interaction.targetId;
-        return interaction.guild.members.cache.get(memberId);
-    }
-
-    export function getMessageFromContextInteraction(interaction: ContextMenuInteraction): Promise<Message | undefined> {
-        const messageId = interaction.targetId;
-        return interaction.channel.messages.fetch(messageId);
-    }
-
-    export function replyOrFollowUp(interaction: BaseCommandInteraction | MessageComponentInteraction, content: string, ephemeral: boolean = false): Promise<void> {
+    export async function replyOrFollowUp(interaction: CommandInteraction | MessageComponentInteraction, replyOptions: (InteractionReplyOptions & {
+        ephemeral?: boolean
+    }) | string): Promise<void> {
+        // if interaction is already replied
         if (interaction.replied) {
-            return interaction.followUp({
-                ephemeral,
-                content
-            }) as unknown as Promise<void>;
+            await interaction.followUp(replyOptions);
+            return;
         }
-        if (interaction.deferred) {
-            return interaction.editReply(content) as unknown as Promise<void>;
-        }
-        return interaction.reply({
-            ephemeral,
-            content
-        });
-    }
 
-    export function getInteractionCaller(interaction: BaseCommandInteraction | MessageComponentInteraction): GuildMember | null {
-        const {member} = interaction;
-        if (member == null) {
-            replyOrFollowUp(interaction, "Unable to extract member");
-            throw new Error("Unable to extract member");
+        // if interaction is deferred but not replied
+        if (interaction.deferred) {
+            await interaction.editReply(replyOptions);
+            return;
         }
-        if (member instanceof GuildMember) {
-            return member;
-        }
-        return null;
+
+        // if interaction is not handled yet
+        await interaction.reply(replyOptions);
     }
 }

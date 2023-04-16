@@ -1,47 +1,25 @@
+import {ArgsOf, Discord, On, Slash, SlashOption} from "discordx";
+import {ApplicationCommandOptionType, CommandInteraction, Message, PermissionsBitField} from "discord.js";
 import {injectable} from "tsyringe";
-import {
-    ApplicationCommandMixin,
-    ArgsOf,
-    Client,
-    Discord,
-    On,
-    Permission,
-    SimpleCommandMessage,
-    Slash,
-    SlashOption
-} from "discordx";
-import {ApplicationCommandPermissions, CommandInteraction, Guild, Message, Permissions} from "discord.js";
-import {InteractionUtils, ObjectUtil} from "../utils/Utils";
-import {FlagManager} from "../model/manager/FlagManager";
-import {getRepository} from "typeorm";
-import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model";
+import {FlagManager} from "../model/manager/FlagManager.js";
+import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
+import {InteractionUtils, ObjectUtil} from "../utils/Utils.js";
+import {BaseDAO} from "../DAO/BaseDAO.js";
 
 @Discord()
-@Permission(false)
-@Permission((guild: Guild, command: ApplicationCommandMixin | SimpleCommandMessage): ApplicationCommandPermissions[] => {
-    const roles = guild.roles.cache;
-    const adminRoles = roles.filter(role => {
-        return role.permissions.has(Permissions.FLAGS.ADMINISTRATOR, true);
-    });
-    return adminRoles.map(allowedRole => {
-        return {
-            id: allowedRole.id,
-            type: "ROLE",
-            permission: true
-        };
-    });
-})
 @injectable()
-export class FlagReactionCommand {
+
+export class FlagReactionCommand extends BaseDAO {
 
     public constructor(private _flagManager: FlagManager) {
+        super();
     }
 
-    @On("messageDelete")
-    private async messageDeleted([message]: ArgsOf<"messageDelete">, client: Client): Promise<void> {
+    @On()
+    private async messageDelete([message]: ArgsOf<"messageDelete">): Promise<void> {
         const messageId = message.id;
-        const repo = getRepository(InteractionFlagModel);
-        if (message.author.id !== message.guild.me.id) {
+        const repo = this.ds.getRepository(InteractionFlagModel);
+        if (message.author.id !== message.guild.members.me.id) {
             return;
         }
         try {
@@ -54,26 +32,30 @@ export class FlagReactionCommand {
         }
     }
 
-    @Slash("flagreact", {
-        description: "set the initial flag reaction message"
+    @Slash({
+        description: "set the initial flag reaction message",
+        name: "flag_react",
+        defaultMemberPermissions: PermissionsBitField.Flags.Administrator
     })
     private async flagReact(
-        @SlashOption("custommessage", {
-            description: "custom message to post with this command, leave blank for deault",
+        @SlashOption({
+            name: "custom_message",
+            description: "custom message to post with this command, leave blank for default",
             required: false,
+            type: ApplicationCommandOptionType.String,
         })
             custom: string,
         interaction: CommandInteraction
     ): Promise<void> {
         await interaction.deferReply();
-        const repo = getRepository(InteractionFlagModel);
+        const repo = this.ds.getRepository(InteractionFlagModel);
         const count = await repo.count({
             where: {
                 guildId: interaction.guildId
             }
         });
         if (count !== 0) {
-            setTimeout(args => {
+            setTimeout(() => {
                 interaction.deleteReply();
             }, 4000);
             return InteractionUtils.replyOrFollowUp(interaction, "Only one `/flagreact` can exist at one time");
@@ -96,7 +78,9 @@ export class FlagReactionCommand {
         }
     }
 
-    @Slash("makereport", {
+    @Slash({
+        name: "make_report",
+        defaultMemberPermissions: PermissionsBitField.Flags.Administrator,
         description: "generate csv report of all members of roles made by this bot"
     })
     private async makeReport(

@@ -1,23 +1,23 @@
-import {BaseDAO} from "../../DAO/BaseDAO";
-import {Guild, GuildMember, Role} from "discord.js";
-import {getRepository, Repository, Transaction, TransactionRepository} from "typeorm";
-import {ObjectUtil} from "../../utils/Utils";
-import {singleton} from "tsyringe";
-import {GuildManager} from "./GuildManager";
 import countries from "i18n-iso-countries";
-import {FlagModel} from "../DB/guild/Flag.model";
 import emojiUnicode from "emoji-unicode";
 import countryFlagEmoji from "country-flag-emoji";
+import {FlagModel} from "../DB/guild/Flag.model.js";
+import {BaseDAO} from "../../DAO/BaseDAO.js";
+import {singleton} from "tsyringe";
+import {Guild, GuildMember, Role} from "discord.js";
+import {Repository} from "typeorm";
+import {DbUtils, ObjectUtil} from "../../utils/Utils.js";
+import {GuildManager} from "./GuildManager.js";
 
 @singleton()
-export class FlagManager extends BaseDAO<FlagModel> {
+export class FlagManager extends BaseDAO {
 
     public constructor(private _guildManager: GuildManager) {
         super();
     }
 
     public async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
-        const repo = getRepository(FlagModel);
+        const repo = this.ds.getRepository(FlagModel);
         const guild = await this._guildManager.getGuild(guildId);
         const guildRoles = guild.roles.cache;
         const allRoles = await repo.find({
@@ -43,7 +43,7 @@ export class FlagManager extends BaseDAO<FlagModel> {
 
     public async getAllRolesFromDb(guildId: string): Promise<Role[]> {
         const guild = await this._guildManager.getGuild(guildId);
-        const repo = getRepository(FlagModel);
+        const repo = this.ds.getRepository(FlagModel);
         const allRoles = await repo.find({
             where: {
                 guildId
@@ -70,8 +70,8 @@ export class FlagManager extends BaseDAO<FlagModel> {
         return [...role.members.values()];
     }
 
-    public async removeRoleBinding(guildId: string, roleId: string, propagateToGuild: boolean = true): Promise<boolean> {
-        const repo = getRepository(FlagModel);
+    public async removeRoleBinding(guildId: string, roleId: string, propagateToGuild = true): Promise<boolean> {
+        const repo = this.ds.getRepository(FlagModel);
         const deletedData = await repo.delete({
             guildId,
             roleId
@@ -98,12 +98,12 @@ export class FlagManager extends BaseDAO<FlagModel> {
      * @param repo
      * @param addNew
      */
-    @Transaction()
-    public async getRoleFromAlpha2Code(flagEmoji: string, guildId: string, addNew: boolean, @TransactionRepository(FlagModel) repo?: Repository<FlagModel>): Promise<Role> {
+    public async getRoleFromAlpha2Code(flagEmoji: string, guildId: string, addNew: boolean): Promise<Role> {
         const alpha2Code = this.getCountryFromFlag(flagEmoji);
         if (!ObjectUtil.validString(alpha2Code)) {
             return null;
         }
+        const repo = this.ds.getRepository(FlagModel);
         const fromDb = await repo.findOne({
             select: ["roleId", "guildId"],
             where: {
@@ -124,17 +124,17 @@ export class FlagManager extends BaseDAO<FlagModel> {
 
     private async create(alpha2Code: string, guild: Guild, repo: Repository<FlagModel>): Promise<Role> {
         const country = countries.getName(alpha2Code, "en");
-        const botName = guild.me.displayName;
+        const botName = guild.members.me.displayName;
         const newRole = await guild.roles.create({
             name: country,
             reason: `Created via ${botName}`
         });
-        const newModel = BaseDAO.build(FlagModel, {
+        const newModel = DbUtils.build(FlagModel, {
             alpha2Code,
             roleId: newRole.id,
             guildId: guild.id
         });
-        await super.commitToDatabase(repo, [newModel]);
+        await repo.save(newModel);
         return newRole;
     }
 

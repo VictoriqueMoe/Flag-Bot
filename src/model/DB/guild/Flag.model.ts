@@ -1,6 +1,6 @@
-import {AbstractModel} from "../AbstractModel";
+import {AbstractModel} from "../AbstractModel.js";
 import {Column, Entity, JoinColumn, ManyToOne} from "typeorm";
-import {GuildableModel} from "./Guildable.model";
+import {GuildableModel} from "./Guildable.model.js";
 
 @Entity()
 export class FlagModel extends AbstractModel {

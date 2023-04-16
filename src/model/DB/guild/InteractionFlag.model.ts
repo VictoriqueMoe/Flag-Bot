@@ -1,6 +1,6 @@
+import {AbstractModel} from "../AbstractModel.js";
 import {Column, Entity, JoinColumn, ManyToOne, Unique} from "typeorm";
-import {AbstractModel} from "../AbstractModel";
-import {GuildableModel} from "./Guildable.model";
+import {GuildableModel} from "./Guildable.model.js";
 
 @Entity()
 @Unique("uniqueConstraint", ["guildId"])
