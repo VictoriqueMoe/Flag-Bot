@@ -16,9 +16,6 @@ export class Main {
             type: "better-sqlite3",
             database: "database.sqlite",
             synchronize: true,
-            cache: {
-                duration: 1000
-            },
             entities: [`${dirname(import.meta.url)}/model/DB/**/*.model.{ts,js}`]
         });
 

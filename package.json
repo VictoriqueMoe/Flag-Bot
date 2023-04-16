@@ -13,7 +13,8 @@
     "start": "node build/Main.js",
     "start_js": "npm run build & node build/Main.js",
     "rebuild_and_start": "npm run build & npm run start",
-    "update_deps": "npx npm-check-updates"
+    "update_deps": "npx npm-check-updates",
+    "start:prod": "nodemon build/Main.js"
   },
   "repository": {
     "type": "git",
@@ -36,6 +37,7 @@
     "dotenv": "^16.0.3",
     "emoji-unicode": "^2.0.1",
     "i18n-iso-countries": "^7.6.0",
+    "nodemon": "^2.0.22",
     "reflect-metadata": "^0.1.13",
     "tsyringe": "^4.7.0",
     "typeorm": "^0.3.15"
