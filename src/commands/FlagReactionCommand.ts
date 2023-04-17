@@ -67,11 +67,21 @@ export class FlagReactionCommand extends BaseDAO {
         if (!(messageReply instanceof Message)) {
             return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
         }
+        try {
+            await messageReply.channel.messages.fetch({
+                message: messageReply.id,
+                force: true,
+                cache: true
+            });
+        } catch {
+            return InteractionUtils.replyOrFollowUp(interaction, "I am not allowed to post/see messages in this channel");
+        }
 
         try {
             await repo.insert({
                 guildId: interaction.guildId,
-                messageId: messageReply.id
+                messageId: messageReply.id,
+                channelId: messageReply.channelId
             });
         } catch {
             return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");

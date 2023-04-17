@@ -9,6 +9,9 @@ export class InteractionFlagModel extends AbstractModel {
     @Column({nullable: false})
     public messageId: string;
 
+    @Column({nullable: false})
+    public channelId: string;
+
     @ManyToOne("GuildableModel", "flagModel", AbstractModel.cascadeOps)
     @JoinColumn({name: AbstractModel.joinCol})
     public guildableModel: GuildableModel;

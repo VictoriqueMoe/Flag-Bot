@@ -1,6 +1,6 @@
 import {BaseDAO} from "../DAO/BaseDAO.js";
 import {ArgsOf, Client, Discord, On, RestArgsOf} from "discordx";
-import {BaseGuildTextChannel, ChannelType} from "discord.js";
+import {ChannelType} from "discord.js";
 import {injectable} from "tsyringe";
 import {ArrayUtils, DbUtils, InteractionUtils} from "../utils/Utils.js";
 import {GuildableModel} from "../model/DB/guild/Guildable.model.js";
@@ -120,24 +120,18 @@ export class OnReady extends BaseDAO {
             if (!messagePost) {
                 continue;
             }
-            const {messageId} = messagePost;
-            const channels = [...guild.channels.cache.values()];
-            for (const channel of channels) {
-                const fetchedChannel = await channel.fetch(true);
-                if (!(fetchedChannel instanceof BaseGuildTextChannel)) {
+            try {
+                const channel = await guild.channels.fetch(messagePost.channelId);
+                if (!channel.isTextBased()) {
                     continue;
                 }
-                try {
-                    const message = await fetchedChannel.messages.fetch({
-                        message: messageId,
-                        force: true,
-                        cache: true
-                    });
-                    console.log(`Message found: ${message}`);
-                    break;
-                } catch {
-
-                }
+                const message = await channel.messages.fetch({
+                    message: messagePost.messageId,
+                    force: true,
+                    cache: true
+                });
+                console.log(`Message found: ${message}`);
+            } catch {
             }
         }
     }

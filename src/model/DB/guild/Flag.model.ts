@@ -1,14 +1,15 @@
 import {AbstractModel} from "../AbstractModel.js";
-import {Column, Entity, JoinColumn, ManyToOne} from "typeorm";
+import {Column, Entity, JoinColumn, ManyToOne, Unique} from "typeorm";
 import type {GuildableModel} from "./Guildable.model.js";
 
 @Entity()
+@Unique("uniqueIndex", ["alpha2Code", "roleId", "guildId"])
 export class FlagModel extends AbstractModel {
 
-    @Column({unique: true, nullable: false})
+    @Column({nullable: false})
     public alpha2Code: string;
 
-    @Column({unique: true, nullable: false})
+    @Column({nullable: false})
     public roleId: string;
 
     @ManyToOne("GuildableModel", "flagModel", AbstractModel.cascadeOps)
