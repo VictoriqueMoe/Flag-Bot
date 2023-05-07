@@ -1,19 +1,18 @@
-import {DupeRoleException, FlagManager, NoRolesFoundException} from "../model/manager/FlagManager.js";
 import {ArgsOf, Discord, On} from "discordx";
 import {injectable} from "tsyringe";
-import {ArrayUtils, ObjectUtil} from "../utils/Utils.js";
+import {ObjectUtil} from "../utils/Utils.js";
 import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
 import {GuildMember, Message, MessageReaction, PartialMessage, PartialMessageReaction} from "discord.js";
 import {BaseDAO} from "../DAO/BaseDAO.js";
-import {BotRoleManager} from "../model/manager/BotRoleManager.js";
 import {InteractionType} from "../model/enums/InteractionType.js";
+import {DupeRoleException, NoRolesFoundException} from "../engine/impl/CountryFlagEngine.js";
+import {FlagManager} from "../manager/FlagManager.js";
 
 @Discord()
 @injectable()
 export class ReactionListener extends BaseDAO {
 
-    public constructor(private _flagManager: FlagManager,
-                       private _botRoleManager: BotRoleManager) {
+    public constructor(private _flagManager: FlagManager) {
         super();
     }
 
@@ -32,19 +31,9 @@ export class ReactionListener extends BaseDAO {
         }
         const emoji = reaction.emoji;
         const flagEmoji = emoji.name;
-        const role = await this._flagManager.createRoleFromFlag(flagEmoji, guildMember.guild.id, false);
-        if (!role) {
-            return;
-        }
-        try {
-            await guildMember.roles.remove(role);
-        } catch {
-            return;
-        }
-        const usersWithRole = await this._botRoleManager.getUsersWithRole(guildMember.guild.id, role.id);
-        if (!ArrayUtils.isValidArray(usersWithRole)) {
-            await this._botRoleManager.removeRoleBinding(guildMember.guild.id, role.id);
-        }
+        const type = await this.getTypeFromReaction(reaction);
+        const engine = this._flagManager.getEngineFromType(type);
+        await engine.handleReactionRemove(flagEmoji, guildMember);
     }
 
     private async getTypeFromReaction(reaction: MessageReaction | PartialMessageReaction): Promise<InteractionType | null> {
@@ -82,22 +71,21 @@ export class ReactionListener extends BaseDAO {
             return;
         }
         const type = await this.getTypeFromReaction(reaction);
-        if (type === InteractionType.FLAG) {
-            try {
-                await this._flagManager.handleReaction(guildMember, flagEmoji);
-            } catch (e) {
-                if (e instanceof NoRolesFoundException || e instanceof DupeRoleException) {
-                    try {
-                        await this._removeReaction(flagEmoji, guildMember, message);
-                    } catch {
+        const engine = this._flagManager.getEngineFromType(type);
+        try {
+            await engine.handleReactionAdd(guildMember, flagEmoji);
+        } catch (e) {
+            if (e instanceof NoRolesFoundException || e instanceof DupeRoleException) {
+                try {
+                    await this._removeReaction(flagEmoji, guildMember, message);
+                } catch {
 
-                    }
-                } else {
-                    throw e;
                 }
+            } else {
+                throw e;
             }
-            return;
         }
+        return;
     }
 
     private _removeReaction(flagEmoji: string, guildMember: GuildMember, message: Message | PartialMessage): Promise<MessageReaction> {

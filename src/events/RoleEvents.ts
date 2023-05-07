@@ -2,7 +2,7 @@ import {BaseDAO} from "../DAO/BaseDAO.js";
 import {Discord} from "discordx";
 import {injectable} from "tsyringe";
 import {ArgsOf, On} from "discordx/build/esm/index.js";
-import {BotRoleManager} from "../model/manager/BotRoleManager.js";
+import {BotRoleManager} from "../manager/BotRoleManager.js";
 
 @Discord()
 @injectable()

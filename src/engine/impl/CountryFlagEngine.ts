@@ -1,25 +1,27 @@
 import countries from "i18n-iso-countries";
-import {FlagModel} from "../DB/guild/Flag.model.js";
-import {BaseDAO} from "../../DAO/BaseDAO.js";
-import {singleton} from "tsyringe";
 import {Guild, GuildMember, Role} from "discord.js";
 import {Repository} from "typeorm";
+import {BotRoleManager} from "../../manager/BotRoleManager.js";
+import {GuildManager} from "../../manager/GuildManager.js";
+import {CountryManager} from "../../manager/CountryManager.js";
 import {DbUtils, ObjectUtil} from "../../utils/Utils.js";
-import {GuildManager} from "./GuildManager.js";
-import {CountryManager} from "./CountryManager.js";
-import {InteractionType} from "../enums/InteractionType.js";
-import {BotRoleManager} from "./BotRoleManager.js";
+import {InteractionType} from "../../model/enums/InteractionType.js";
+import {FlagModel} from "../../model/DB/guild/Flag.model.js";
+import {AbstractFlagReactionEngine} from "./AbstractFlagReactionEngine.js";
 
-@singleton()
-export class FlagManager extends BaseDAO {
+export class CountryFlagEngine extends AbstractFlagReactionEngine {
 
     public constructor(private _guildManager: GuildManager,
                        private _countryManager: CountryManager,
-                       private _botRoleManager: BotRoleManager) {
-        super();
+                       botRoleManager: BotRoleManager) {
+        super(botRoleManager);
     }
 
-    public async handleReaction(guildMember: GuildMember, flagEmoji: string): Promise<void> {
+    public override get type(): InteractionType {
+        return InteractionType.FLAG;
+    }
+
+    public override async handleReactionAdd(guildMember: GuildMember, flagEmoji: string): Promise<void> {
         const guildId = guildMember.guild.id;
         if (await this._hasDupes(guildMember)) {
             throw new DupeRoleException();
@@ -35,7 +37,7 @@ export class FlagManager extends BaseDAO {
         }
     }
 
-    public async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
+    public override async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
         const repo = this.ds.getRepository(FlagModel);
         const guild = await this._guildManager.getGuild(guildId);
         const guildRoles = guild.roles.cache;
@@ -67,7 +69,7 @@ export class FlagManager extends BaseDAO {
      * @param guildId
      * @param addNew
      */
-    public async createRoleFromFlag(flagEmoji: string, guildId: string, addNew: boolean): Promise<Role> {
+    public override async createRoleFromFlag(flagEmoji: string, guildId: string, addNew: boolean): Promise<Role> {
         const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
         if (!ObjectUtil.validString(alpha2Code)) {
             return null;

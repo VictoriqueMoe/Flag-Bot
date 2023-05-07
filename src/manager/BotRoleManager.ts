@@ -1,10 +1,10 @@
 import {singleton} from "tsyringe";
 import {GuildMember, Role} from "discord.js";
-import {FlagModel} from "../DB/guild/Flag.model.js";
+import {FlagModel} from "../model/DB/guild/Flag.model.js";
 import {GuildManager} from "./GuildManager.js";
-import {InteractionType} from "../enums/InteractionType.js";
-import {BaseDAO} from "../../DAO/BaseDAO.js";
-import {LanguageModel} from "../DB/guild/Language.model.js";
+import {InteractionType} from "../model/enums/InteractionType.js";
+import {BaseDAO} from "../DAO/BaseDAO.js";
+import {LanguageModel} from "../model/DB/guild/Language.model.js";
 import {Repository} from "typeorm/repository/Repository.js";
 
 @singleton()

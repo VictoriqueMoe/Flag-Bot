@@ -1,7 +1,7 @@
 import {singleton} from "tsyringe";
 import emojiUnicode from "emoji-unicode";
 import countryFlagEmoji from "country-flag-emoji";
-import {ObjectUtil} from "../../utils/Utils.js";
+import {ObjectUtil} from "../utils/Utils.js";
 
 @singleton()
 export class CountryManager {

@@ -1,12 +1,12 @@
-import {ArgsOf, Discord, On, Slash, SlashOption} from "discordx";
+import {ArgsOf, Discord, On, Slash, SlashChoice, SlashOption} from "discordx";
 import {ApplicationCommandOptionType, CommandInteraction, Message, PermissionsBitField} from "discord.js";
 import {injectable} from "tsyringe";
-import {FlagManager} from "../model/manager/FlagManager.js";
 import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
 import {InteractionUtils, ObjectUtil} from "../utils/Utils.js";
 import {BaseDAO} from "../DAO/BaseDAO.js";
 import {InteractionType} from "../model/enums/InteractionType.js";
 import {Repository} from "typeorm/repository/Repository.js";
+import {FlagManager} from "../manager/FlagManager.js";
 
 @Discord()
 @injectable()
@@ -158,12 +158,22 @@ export class FlagReactionCommand extends BaseDAO {
         description: "generate csv report of all members of roles made by this bot"
     })
     private async makeReport(
+        @SlashChoice({name: "languages", value: InteractionType.LANGUAGE})
+        @SlashChoice({name: "countries", value: InteractionType.FLAG})
+        @SlashOption({
+            name: "type",
+            description: "WHat type do you wish to generate a report for",
+            required: true,
+            type: ApplicationCommandOptionType.Number,
+        })
+            type: InteractionType,
         interaction: CommandInteraction
     ): Promise<void> {
         await interaction.deferReply({
             ephemeral: true
         });
-        const reportMap = await this._flagManager.getReportMap(interaction.guildId);
+        const engine = this._flagManager.getEngineFromType(type);
+        const reportMap = await engine.getReportMap(interaction.guildId);
         const csvMap: [string, number, string[]][] = [];
         for (const [role, members] of reportMap) {
             const memberArr = members.map(member => member.user.tag);

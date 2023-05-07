@@ -1,6 +1,6 @@
 import {singleton} from "tsyringe";
 import fetch from 'node-fetch';
-import {Country, CountryLanguage} from "../typeings.js";
+import {Country, CountryLanguage} from "../model/typeings.js";
 
 @singleton()
 export class RestCountriesManager {
@@ -15,7 +15,7 @@ export class RestCountriesManager {
         return (await response.json()) as Country;
     }
 
-    public async getCountyLanguage(countryCode: string): Promise<CountryLanguage[] | null> {
+    public async getCountyLanguages(countryCode: string): Promise<CountryLanguage[] | null> {
         const country = await this.getCountryIfo(countryCode);
         if (country === null) {
             return null;
