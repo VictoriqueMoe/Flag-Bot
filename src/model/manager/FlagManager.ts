@@ -1,6 +1,4 @@
 import countries from "i18n-iso-countries";
-import emojiUnicode from "emoji-unicode";
-import countryFlagEmoji from "country-flag-emoji";
 import {FlagModel} from "../DB/guild/Flag.model.js";
 import {BaseDAO} from "../../DAO/BaseDAO.js";
 import {singleton} from "tsyringe";
@@ -8,12 +6,33 @@ import {Guild, GuildMember, Role} from "discord.js";
 import {Repository} from "typeorm";
 import {DbUtils, ObjectUtil} from "../../utils/Utils.js";
 import {GuildManager} from "./GuildManager.js";
+import {CountryManager} from "./CountryManager.js";
+import {InteractionType} from "../enums/InteractionType.js";
+import {BotRoleManager} from "./BotRoleManager.js";
 
 @singleton()
 export class FlagManager extends BaseDAO {
 
-    public constructor(private _guildManager: GuildManager) {
+    public constructor(private _guildManager: GuildManager,
+                       private _countryManager: CountryManager,
+                       private _botRoleManager: BotRoleManager) {
         super();
+    }
+
+    public async handleReaction(guildMember: GuildMember, flagEmoji: string): Promise<void> {
+        const guildId = guildMember.guild.id;
+        if (await this._hasDupes(guildMember)) {
+            throw new DupeRoleException();
+        }
+        const role = await this.createRoleFromFlag(flagEmoji, guildId, true);
+        if (!role) {
+            throw new NoRolesFoundException();
+        }
+        try {
+            await guildMember.roles.add(role);
+        } catch {
+
+        }
     }
 
     public async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
@@ -41,65 +60,15 @@ export class FlagManager extends BaseDAO {
         return reMap;
     }
 
-    public async getAllRolesFromDb(guildId: string): Promise<Role[]> {
-        const guild = await this._guildManager.getGuild(guildId);
-        const repo = this.ds.getRepository(FlagModel);
-        const allRoles = await repo.find({
-            where: {
-                guildId
-            }
-        });
-        const retArr: Role[] = [];
-        for (const role of allRoles) {
-            const guildRole = guild.roles.cache.get(role.roleId);
-            if (!guildRole) {
-                await this.removeRoleBinding(guildId, role.roleId, false);
-                continue;
-            }
-            retArr.push(guildRole);
-        }
-        return retArr;
-    }
-
-    public async getUsersWithRole(guildId: string, roleId: string): Promise<GuildMember[]> {
-        const guild = await this._guildManager.getGuild(guildId);
-        const role = guild.roles.cache.get(roleId);
-        if (!role) {
-            return [];
-        }
-        return [...role.members.values()];
-    }
-
-    public async removeRoleBinding(guildId: string, roleId: string, propagateToGuild = true): Promise<boolean> {
-        const repo = this.ds.getRepository(FlagModel);
-        const deletedData = await repo.delete({
-            guildId,
-            roleId
-        });
-        const didDelete = deletedData.affected === 1;
-        if (didDelete && propagateToGuild) {
-            const guild = await this._guildManager.getGuild(guildId);
-            const role = guild.roles.cache.get(roleId);
-            try {
-                await role.delete("no more members with role");
-            } catch {
-                return false;
-            }
-            return true;
-        }
-        return !propagateToGuild && didDelete;
-
-    }
 
     /**
      * Get the role from the alpha code, will make a new role if one does not exist and will persist it
      * @param flagEmoji
      * @param guildId
-     * @param repo
      * @param addNew
      */
-    public async getRoleFromAlpha2Code(flagEmoji: string, guildId: string, addNew: boolean): Promise<Role> {
-        const alpha2Code = this.getCountryFromFlag(flagEmoji);
+    public async createRoleFromFlag(flagEmoji: string, guildId: string, addNew: boolean): Promise<Role> {
+        const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
         if (!ObjectUtil.validString(alpha2Code)) {
             return null;
         }
@@ -138,13 +107,25 @@ export class FlagManager extends BaseDAO {
         return newRole;
     }
 
-    private getCountryFromFlag(flag: string): string {
-        const unicode = "U+" + emojiUnicode(flag).toUpperCase().split(" ").join(" U+");
-        for (const countryData of countryFlagEmoji.list) {
-            if (countryData.unicode === unicode) {
-                return countryData.code;
+    private async _hasDupes(member: GuildMember): Promise<boolean> {
+        const allRoles = await this._botRoleManager.getAllRolesFromDb(member.guild.id, InteractionType.FLAG);
+        for (const role of allRoles) {
+            if (member.roles.cache.has(role.id)) {
+                return true;
             }
         }
-        return null;
+        return false;
+    }
+}
+
+export class DupeRoleException extends Error {
+    public constructor() {
+        super();
+    }
+}
+
+export class NoRolesFoundException extends Error {
+    public constructor() {
+        super();
     }
 }

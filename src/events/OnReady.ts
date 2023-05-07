@@ -26,7 +26,7 @@ export class OnReady extends BaseDAO {
         await this.init();
         await this.initAppCommands();
         await this.loadMessages();
-        console.log("Bot logged in");
+        console.log(`Bot logged in as ${client.user.tag}`);
     }
 
     @On.rest()

@@ -5,6 +5,8 @@ import {FlagManager} from "../model/manager/FlagManager.js";
 import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
 import {InteractionUtils, ObjectUtil} from "../utils/Utils.js";
 import {BaseDAO} from "../DAO/BaseDAO.js";
+import {InteractionType} from "../model/enums/InteractionType.js";
+import {Repository} from "typeorm/repository/Repository.js";
 
 @Discord()
 @injectable()
@@ -32,6 +34,74 @@ export class FlagReactionCommand extends BaseDAO {
         }
     }
 
+
+    private async checkNoDupeMessages(repo: Repository<unknown>, type: InteractionType, interaction: CommandInteraction): Promise<boolean> {
+        const count = await repo.count({
+            where: {
+                guildId: interaction.guildId,
+                type: type
+            }
+        });
+        if (count !== 0) {
+            setTimeout(() => {
+                interaction.deleteReply();
+            }, 4000);
+            const cmd = type === InteractionType.FLAG ? "flag_react" : "language_react";
+            await InteractionUtils.replyOrFollowUp(interaction, `Only one "${cmd}" can exist at one time`);
+            return true;
+        }
+        return false;
+    }
+
+    @Slash({
+        description: "set the initial language reaction message",
+        name: "language_react",
+        defaultMemberPermissions: PermissionsBitField.Flags.Administrator
+    })
+    private async languageReact(
+        @SlashOption({
+            name: "custom_message",
+            description: "custom message to post with this command, leave blank for default",
+            required: false,
+            type: ApplicationCommandOptionType.String,
+        })
+            custom: string,
+        interaction: CommandInteraction
+    ): Promise<void> {
+        await interaction.deferReply();
+        const repo = this.ds.getRepository(InteractionFlagModel);
+        const hasDupe = await this.checkNoDupeMessages(repo, InteractionType.LANGUAGE, interaction);
+        if (hasDupe) {
+            return;
+        }
+        const messageReply = await interaction.followUp({
+            fetchReply: true,
+            content: ObjectUtil.validString(custom) ? custom : "Please react with the flag of a country to get the role of the primary language of the country!"
+        });
+        if (!(messageReply instanceof Message)) {
+            return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
+        }
+        try {
+            await messageReply.channel.messages.fetch({
+                message: messageReply.id,
+                force: true,
+                cache: true
+            });
+        } catch {
+            return InteractionUtils.replyOrFollowUp(interaction, "I am not allowed to post/see messages in this channel");
+        }
+        try {
+            await repo.insert({
+                guildId: interaction.guildId,
+                messageId: messageReply.id,
+                channelId: messageReply.channelId,
+                type: InteractionType.LANGUAGE
+            });
+        } catch {
+            return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
+        }
+    }
+
     @Slash({
         description: "set the initial flag reaction message",
         name: "flag_react",
@@ -49,16 +119,9 @@ export class FlagReactionCommand extends BaseDAO {
     ): Promise<void> {
         await interaction.deferReply();
         const repo = this.ds.getRepository(InteractionFlagModel);
-        const count = await repo.count({
-            where: {
-                guildId: interaction.guildId
-            }
-        });
-        if (count !== 0) {
-            setTimeout(() => {
-                interaction.deleteReply();
-            }, 4000);
-            return InteractionUtils.replyOrFollowUp(interaction, "Only one `/flagreact` can exist at one time");
+        const hasDupe = await this.checkNoDupeMessages(repo, InteractionType.FLAG, interaction);
+        if (hasDupe) {
+            return;
         }
         const messageReply = await interaction.followUp({
             fetchReply: true,
@@ -81,7 +144,8 @@ export class FlagReactionCommand extends BaseDAO {
             await repo.insert({
                 guildId: interaction.guildId,
                 messageId: messageReply.id,
-                channelId: messageReply.channelId
+                channelId: messageReply.channelId,
+                type: InteractionType.FLAG
             });
         } catch {
             return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");

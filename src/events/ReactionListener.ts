@@ -1,27 +1,20 @@
-import {FlagManager} from "../model/manager/FlagManager.js";
+import {DupeRoleException, FlagManager, NoRolesFoundException} from "../model/manager/FlagManager.js";
 import {ArgsOf, Discord, On} from "discordx";
 import {injectable} from "tsyringe";
 import {ArrayUtils, ObjectUtil} from "../utils/Utils.js";
 import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
-import {GuildMember, Message, MessageReaction, PartialMessage} from "discord.js";
+import {GuildMember, Message, MessageReaction, PartialMessage, PartialMessageReaction} from "discord.js";
 import {BaseDAO} from "../DAO/BaseDAO.js";
+import {BotRoleManager} from "../model/manager/BotRoleManager.js";
+import {InteractionType} from "../model/enums/InteractionType.js";
 
 @Discord()
 @injectable()
-export class FlagReaction extends BaseDAO {
+export class ReactionListener extends BaseDAO {
 
-    public constructor(private _flagManager: FlagManager) {
+    public constructor(private _flagManager: FlagManager,
+                       private _botRoleManager: BotRoleManager) {
         super();
-    }
-
-    @On()
-    private async roleDelete([role]: ArgsOf<"roleDelete">): Promise<void> {
-        const {id} = role;
-        try {
-            await this._flagManager.removeRoleBinding(role.guild.id, id, false);
-        } catch {
-
-        }
     }
 
     @On()
@@ -39,7 +32,7 @@ export class FlagReaction extends BaseDAO {
         }
         const emoji = reaction.emoji;
         const flagEmoji = emoji.name;
-        const role = await this._flagManager.getRoleFromAlpha2Code(flagEmoji, guildMember.guild.id, false);
+        const role = await this._flagManager.createRoleFromFlag(flagEmoji, guildMember.guild.id, false);
         if (!role) {
             return;
         }
@@ -48,10 +41,25 @@ export class FlagReaction extends BaseDAO {
         } catch {
             return;
         }
-        const usersWithRole = await this._flagManager.getUsersWithRole(guildMember.guild.id, role.id);
+        const usersWithRole = await this._botRoleManager.getUsersWithRole(guildMember.guild.id, role.id);
         if (!ArrayUtils.isValidArray(usersWithRole)) {
-            await this._flagManager.removeRoleBinding(guildMember.guild.id, role.id);
+            await this._botRoleManager.removeRoleBinding(guildMember.guild.id, role.id);
         }
+    }
+
+    private async getTypeFromReaction(reaction: MessageReaction | PartialMessageReaction): Promise<InteractionType | null> {
+        const {message} = reaction;
+        const interactionModel = this.ds.getRepository(InteractionFlagModel);
+        const modelFromDb = await interactionModel.findOne({
+            where: {
+                guildId: message.guildId,
+                messageId: message.id
+            }
+        });
+        if (!modelFromDb) {
+            return null;
+        }
+        return modelFromDb.type;
     }
 
     @On()
@@ -73,38 +81,22 @@ export class FlagReaction extends BaseDAO {
         if (messageOgPoser.id !== guildMember.guild.members.me.id) {
             return;
         }
-        const interactionModel = this.ds.getRepository(InteractionFlagModel);
-        const modelFromDb = await interactionModel.findOne({
-            where: {
-                guildId: message.guildId,
-                messageId: message.id
-            }
-        });
-        if (!modelFromDb) {
-            return;
-        }
-        const guildId = guildMember.guild.id;
-        if (await this._hasDupes(guildMember)) {
+        const type = await this.getTypeFromReaction(reaction);
+        if (type === InteractionType.FLAG) {
             try {
-                await this._removeReaction(flagEmoji, guildMember, message);
-            } catch {
+                await this._flagManager.handleReaction(guildMember, flagEmoji);
+            } catch (e) {
+                if (e instanceof NoRolesFoundException || e instanceof DupeRoleException) {
+                    try {
+                        await this._removeReaction(flagEmoji, guildMember, message);
+                    } catch {
 
+                    }
+                } else {
+                    throw e;
+                }
             }
             return;
-        }
-        const role = await this._flagManager.getRoleFromAlpha2Code(flagEmoji, guildId, true);
-        if (!role) {
-            try {
-                await this._removeReaction(flagEmoji, guildMember, message);
-            } catch {
-
-            }
-            return;
-        }
-        try {
-            await guildMember.roles.add(role);
-        } catch {
-
         }
     }
 
@@ -112,13 +104,4 @@ export class FlagReaction extends BaseDAO {
         return message.reactions.cache.find(r => r.emoji.name == flagEmoji).users.remove(guildMember);
     }
 
-    private async _hasDupes(member: GuildMember): Promise<boolean> {
-        const allRoles = await this._flagManager.getAllRolesFromDb(member.guild.id);
-        for (const role of allRoles) {
-            if (member.roles.cache.has(role.id)) {
-                return true;
-            }
-        }
-        return false;
-    }
 }
