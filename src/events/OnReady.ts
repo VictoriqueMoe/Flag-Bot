@@ -112,26 +112,26 @@ export class OnReady extends BaseDAO {
         const repo = this.ds.getRepository(InteractionFlagModel);
         const allGuilds = this._client.guilds.cache;
         for (const [id, guild] of allGuilds) {
-            const messagePost = await repo.findOne({
-                where: {
-                    guildId: id
-                }
+            const messagePost = await repo.findBy({
+                guildId: id
             });
-            if (!messagePost) {
+            if (!ArrayUtils.isValidArray(messagePost)) {
                 continue;
             }
-            try {
-                const channel = await guild.channels.fetch(messagePost.channelId);
-                if (!channel.isTextBased()) {
-                    continue;
+            for (const model of messagePost) {
+                try {
+                    const channel = await guild.channels.fetch(model.channelId);
+                    if (!channel.isTextBased()) {
+                        continue;
+                    }
+                    const message = await channel.messages.fetch({
+                        message: model.messageId,
+                        force: true,
+                        cache: true
+                    });
+                    console.log(`Message found: ${message}`);
+                } catch {
                 }
-                const message = await channel.messages.fetch({
-                    message: messagePost.messageId,
-                    force: true,
-                    cache: true
-                });
-                console.log(`Message found: ${message}`);
-            } catch {
             }
         }
     }

@@ -8,7 +8,9 @@ import {DbUtils, ObjectUtil} from "../../utils/Utils.js";
 import {InteractionType} from "../../model/enums/InteractionType.js";
 import {FlagModel} from "../../model/DB/guild/Flag.model.js";
 import {AbstractFlagReactionEngine} from "./AbstractFlagReactionEngine.js";
+import {injectable} from "tsyringe";
 
+@injectable()
 export class CountryFlagEngine extends AbstractFlagReactionEngine {
 
     public constructor(private _guildManager: GuildManager,

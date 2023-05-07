@@ -13,6 +13,7 @@ import {FlagManager} from "../manager/FlagManager.js";
 export class ReactionListener extends BaseDAO {
 
     public constructor(private _flagManager: FlagManager) {
+        console.log("foo");
         super();
     }
 

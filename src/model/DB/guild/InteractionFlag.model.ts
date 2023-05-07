@@ -4,7 +4,7 @@ import type {GuildableModel} from "./Guildable.model.js";
 import {InteractionType} from "../../enums/InteractionType.js";
 
 @Entity()
-@Unique("uniqueConstraint", ["guildId"])
+@Unique("uniqueConstraint", ["guildId", "type"])
 export class InteractionFlagModel extends AbstractModel {
 
     @Column({nullable: false})

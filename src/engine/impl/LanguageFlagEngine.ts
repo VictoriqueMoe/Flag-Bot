@@ -10,7 +10,9 @@ import {Repository} from "typeorm";
 import {CountryLanguage} from "../../model/typeings.js";
 import {NoRolesFoundException} from "./CountryFlagEngine.js";
 import {AbstractFlagReactionEngine} from "./AbstractFlagReactionEngine.js";
+import {injectable} from "tsyringe";
 
+@injectable()
 export class LanguageFlagEngine extends AbstractFlagReactionEngine {
 
     public constructor(private _restCountriesManager: RestCountriesManager,

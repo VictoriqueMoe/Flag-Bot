@@ -97,7 +97,8 @@ export class FlagReactionCommand extends BaseDAO {
                 channelId: messageReply.channelId,
                 type: InteractionType.LANGUAGE
             });
-        } catch {
+        } catch (e) {
+            console.error(e);
             return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
         }
     }
