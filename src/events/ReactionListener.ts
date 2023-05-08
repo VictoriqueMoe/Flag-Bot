@@ -34,7 +34,7 @@ export class ReactionListener extends BaseDAO {
         const flagEmoji = emoji.name;
         const type = await this.getTypeFromReaction(reaction);
         const engine = this._flagManager.getEngineFromType(type);
-        await engine.handleReactionRemove(flagEmoji, guildMember);
+        await engine.handleReactionRemove(flagEmoji, guildMember, reaction);
     }
 
     private async getTypeFromReaction(reaction: MessageReaction | PartialMessageReaction): Promise<InteractionType | null> {
@@ -74,7 +74,7 @@ export class ReactionListener extends BaseDAO {
         const type = await this.getTypeFromReaction(reaction);
         const engine = this._flagManager.getEngineFromType(type);
         try {
-            await engine.handleReactionAdd(guildMember, flagEmoji);
+            await engine.handleReactionAdd(guildMember, flagEmoji, reaction);
         } catch (e) {
             if (e instanceof NoRolesFoundException || e instanceof DupeRoleException) {
                 try {

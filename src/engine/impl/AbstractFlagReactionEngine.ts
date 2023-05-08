@@ -15,14 +15,6 @@ export abstract class AbstractFlagReactionEngine extends BaseDAO implements IFla
 
     public async handleReactionRemove(flagEmoji: string, guildMember: GuildMember): Promise<void> {
         const role = await this.createRoleFromFlag(flagEmoji, guildMember.guild.id, false);
-        if (!role) {
-            return;
-        }
-        try {
-            await guildMember.roles.remove(role);
-        } catch {
-            return;
-        }
         const usersWithRole = await this._botRoleManager.getUsersWithRole(guildMember.guild.id, role.id);
         if (!ArrayUtils.isValidArray(usersWithRole)) {
             await this._botRoleManager.removeRoleBinding(guildMember.guild.id, role.id);

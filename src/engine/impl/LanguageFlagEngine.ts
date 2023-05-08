@@ -1,5 +1,5 @@
 import {InteractionType} from "../../model/enums/InteractionType.js";
-import {Guild, GuildMember, Role} from "discord.js";
+import {Guild, GuildMember, MessageReaction, PartialMessageReaction, Role} from "discord.js";
 import {RestCountriesManager} from "../../manager/RestCountriesManager.js";
 import {CountryManager} from "../../manager/CountryManager.js";
 import {BotRoleManager} from "../../manager/BotRoleManager.js";
@@ -8,7 +8,7 @@ import {DbUtils, ObjectUtil} from "../../utils/Utils.js";
 import {LanguageModel} from "../../model/DB/guild/Language.model.js";
 import {Repository} from "typeorm";
 import {CountryLanguage} from "../../model/typeings.js";
-import {NoRolesFoundException} from "./CountryFlagEngine.js";
+import {DupeRoleException, NoRolesFoundException} from "./CountryFlagEngine.js";
 import {AbstractFlagReactionEngine} from "./AbstractFlagReactionEngine.js";
 import {injectable} from "tsyringe";
 
@@ -26,9 +26,43 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         return InteractionType.LANGUAGE;
     }
 
+    public override async handleReactionRemove(flagEmoji: string, guildMember: GuildMember, reaction?: MessageReaction): Promise<void> {
+        const role = await this.createRoleFromFlag(flagEmoji, guildMember.guild.id, false);
+        if (!role) {
+            return;
+        }
+        try {
+            const roleName = role.name;
+            const reactedMessage = reaction.message;
+            const reactionEmoji = reactedMessage.reactions.cache;
+            let hasOtherLang = false;
+            for (const [, otherReaction] of reactionEmoji) {
+                const users = await otherReaction.users.fetch();
+                if (!users.has(guildMember.id)) {
+                    continue;
+                }
+                const reactionName = otherReaction.emoji.name;
+                const roleFromEmoji = await this.createRoleFromFlag(reactionName, guildMember.guild.id, false);
+                if (roleFromEmoji.name === roleName) {
+                    hasOtherLang = true;
+                    break;
+                }
+            }
+            if (!hasOtherLang) {
+                await guildMember.roles.remove(role);
+            }
+        } catch {
+            return;
+        }
+        return super.handleReactionRemove(flagEmoji, guildMember);
+    }
+
     public override async handleReactionAdd(guildMember: GuildMember, flagEmoji: string): Promise<void> {
         const guildId = guildMember.guild.id;
         const role = await this.createRoleFromFlag(flagEmoji, guildId, true);
+        if (this._hasDupes(guildMember, role)) {
+            throw new DupeRoleException();
+        }
         if (!role) {
             throw new NoRolesFoundException();
         }
@@ -88,6 +122,10 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         });
         await repo.save(newModel);
         return newRole;
+    }
+
+    private _hasDupes(member: GuildMember, roleToCheck: Role): boolean {
+        return ObjectUtil.isValidObject(member.roles.cache.find(role => role.name === roleToCheck.name));
     }
 
 }

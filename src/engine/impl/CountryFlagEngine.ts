@@ -39,6 +39,19 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
         }
     }
 
+    public override async handleReactionRemove(flagEmoji: string, guildMember: GuildMember): Promise<void> {
+        const role = await this.createRoleFromFlag(flagEmoji, guildMember.guild.id, false);
+        if (!role) {
+            return;
+        }
+        try {
+            await guildMember.roles.remove(role);
+        } catch {
+            return;
+        }
+        return super.handleReactionRemove(flagEmoji, guildMember);
+    }
+
     public override async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
         const repo = this.ds.getRepository(FlagModel);
         const guild = await this._guildManager.getGuild(guildId);
