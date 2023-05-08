@@ -86,7 +86,6 @@ export class ReactionListener extends BaseDAO {
                 throw e;
             }
         }
-        return;
     }
 
     private _removeReaction(flagEmoji: string, guildMember: GuildMember, message: Message | PartialMessage): Promise<MessageReaction> {
