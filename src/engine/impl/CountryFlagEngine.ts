@@ -9,6 +9,8 @@ import {InteractionType} from "../../model/enums/InteractionType.js";
 import {FlagModel} from "../../model/DB/guild/Flag.model.js";
 import {AbstractFlagReactionEngine} from "./AbstractFlagReactionEngine.js";
 import {injectable} from "tsyringe";
+import {NoRolesFoundException} from "../../exceptions/NoRolesFoundException.js";
+import {DupeRoleException} from "../../exceptions/DupeRoleException.js";
 
 @injectable()
 export class CountryFlagEngine extends AbstractFlagReactionEngine {
@@ -132,17 +134,5 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
             }
         }
         return false;
-    }
-}
-
-export class DupeRoleException extends Error {
-    public constructor() {
-        super();
-    }
-}
-
-export class NoRolesFoundException extends Error {
-    public constructor() {
-        super();
     }
 }

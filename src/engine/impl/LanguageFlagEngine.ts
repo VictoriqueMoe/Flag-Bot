@@ -8,9 +8,10 @@ import {DbUtils, ObjectUtil} from "../../utils/Utils.js";
 import {LanguageModel} from "../../model/DB/guild/Language.model.js";
 import {Repository} from "typeorm";
 import {CountryLanguage} from "../../model/typeings.js";
-import {DupeRoleException, NoRolesFoundException} from "./CountryFlagEngine.js";
 import {AbstractFlagReactionEngine} from "./AbstractFlagReactionEngine.js";
 import {injectable} from "tsyringe";
+import {DupeRoleException} from "../../exceptions/DupeRoleException.js";
+import {NoRolesFoundException} from "../../exceptions/NoRolesFoundException.js";
 
 @injectable()
 export class LanguageFlagEngine extends AbstractFlagReactionEngine {
