@@ -26,10 +26,8 @@ export class Main {
         const clientOps: ClientOptions = {
             intents: [
                 IntentsBitField.Flags.Guilds,
-                IntentsBitField.Flags.GuildMessages,
-                IntentsBitField.Flags.GuildMembers,
                 IntentsBitField.Flags.GuildMessageReactions,
-                IntentsBitField.Flags.GuildIntegrations
+                IntentsBitField.Flags.GuildPresences
             ],
             silent: false,
         };

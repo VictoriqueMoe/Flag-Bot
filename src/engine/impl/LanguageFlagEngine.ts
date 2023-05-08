@@ -1,5 +1,5 @@
 import {InteractionType} from "../../model/enums/InteractionType.js";
-import {Guild, GuildMember, MessageReaction, PartialMessageReaction, Role} from "discord.js";
+import {Guild, GuildMember, MessageReaction, Role} from "discord.js";
 import {RestCountriesManager} from "../../manager/RestCountriesManager.js";
 import {CountryManager} from "../../manager/CountryManager.js";
 import {BotRoleManager} from "../../manager/BotRoleManager.js";

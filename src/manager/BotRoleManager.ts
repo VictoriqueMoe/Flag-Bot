@@ -65,6 +65,7 @@ export class BotRoleManager extends BaseDAO {
         if (!role) {
             return [];
         }
+        await guild.roles.fetch(role.id);
         return [...role.members.values()];
     }
 
