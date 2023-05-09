@@ -12,13 +12,8 @@ export class GuildManager extends BaseDAO {
     }
 
     public async getGuilds(): Promise<Guild[]> {
-        const retArray: Guild[] = [];
         const models = await this.ds.getRepository(GuildableModel).find();
-        for (const model of models) {
-            const guild = await this._client.guilds.fetch(model.guildId);
-            retArray.push(guild);
-        }
-        return retArray;
+        return Promise.all(models.map(model => this._client.guilds.fetch(model.guildId)));
     }
 
     public getGuild(guildId: string): Promise<Guild | null> {

@@ -87,7 +87,8 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         }
         const languages = await this._restCountriesManager.getCountyLanguages(alpha2Code);
         if (languages.length !== 1) {
-            throw new Error("Unable to use a country that speaks more than one language");
+            // countries with more than one language are not yet supported
+            throw new NoRolesFoundException();
         }
 
         const repo = this.ds.getRepository(LanguageModel);
