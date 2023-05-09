@@ -14,7 +14,6 @@ import {DupeRoleException} from "../exceptions/DupeRoleException.js";
 export class ReactionListener extends BaseDAO {
 
     public constructor(private _flagManager: FlagManager) {
-        console.log("foo");
         super();
     }
 

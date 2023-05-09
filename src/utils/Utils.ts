@@ -65,10 +65,10 @@ export class ObjectUtil {
         return true;
     }
 
-    public static removeObjectFromArray(itemToRemove: any, arr: any[]): void {
+    public static removeObjectFromArray<T>(itemToRemove: T, arr: T[]): void {
         let arrLen = arr.length;
         while (arrLen--) {
-            const currentItem: any = arr[arrLen];
+            const currentItem: T = arr[arrLen];
             if (itemToRemove === currentItem) {
                 arr.splice(arrLen, 1);
             }
