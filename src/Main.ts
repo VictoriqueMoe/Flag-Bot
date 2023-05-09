@@ -27,7 +27,8 @@ export class Main {
             intents: [
                 IntentsBitField.Flags.Guilds,
                 IntentsBitField.Flags.GuildMessageReactions,
-                IntentsBitField.Flags.GuildPresences
+                IntentsBitField.Flags.GuildPresences,
+                IntentsBitField.Flags.GuildMembers
             ],
             silent: false,
         };

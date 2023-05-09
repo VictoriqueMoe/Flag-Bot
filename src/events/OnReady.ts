@@ -131,6 +131,9 @@ export class OnReady extends BaseDAO {
                     });
                     console.log(`Message found: ${message}`);
                 } catch {
+                    await repo.delete({
+                        guildId: id
+                    });
                 }
             }
         }
