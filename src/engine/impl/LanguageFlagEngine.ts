@@ -19,8 +19,8 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
     public constructor(private _restCountriesManager: RestCountriesManager,
                        private _countryManager: CountryManager,
                        botRoleManager: BotRoleManager,
-                       private _guildManager: GuildManager) {
-        super(botRoleManager);
+                       guildManager: GuildManager) {
+        super(botRoleManager, guildManager);
     }
 
     public get type(): InteractionType {
@@ -72,12 +72,6 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         } catch {
 
         }
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public override getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
-        // not implemented yet
-        return Promise.resolve(new Map());
     }
 
     public override async createRoleFromFlag(flagEmoji: string, guildId: string, addNew: boolean): Promise<Role> {
