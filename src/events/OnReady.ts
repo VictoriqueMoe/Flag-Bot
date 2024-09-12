@@ -1,16 +1,15 @@
-import {BaseDAO} from "../DAO/BaseDAO.js";
-import {ArgsOf, Client, Discord, On, RestArgsOf} from "discordx";
-import {ChannelType} from "discord.js";
-import {injectable} from "tsyringe";
-import {ArrayUtils, DbUtils, InteractionUtils} from "../utils/Utils.js";
-import {GuildableModel} from "../model/DB/guild/Guildable.model.js";
-import {ActivityType, InteractionType} from "discord-api-types/v10";
-import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
+import { BaseDAO } from "../DAO/BaseDAO.js";
+import { ArgsOf, Client, Discord, On, RestArgsOf } from "discordx";
+import { ChannelType } from "discord.js";
+import { injectable } from "tsyringe";
+import { DbUtils, replyOrFollowUp } from "../utils/Utils.js";
+import { GuildableModel } from "../model/DB/guild/Guildable.model.js";
+import { ActivityType, InteractionType } from "discord-api-types/v10";
+import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";
 
 @Discord()
 @injectable()
 export class OnReady extends BaseDAO {
-
     public constructor(private _client: Client) {
         super();
     }
@@ -21,7 +20,7 @@ export class OnReady extends BaseDAO {
 
     @On()
     private async ready([client]: ArgsOf<"ready">): Promise<void> {
-        await client.user.setActivity('FLAGS!!', {type: ActivityType.Playing});
+        await client.user.setActivity("FLAGS!!", { type: ActivityType.Playing });
         await this.populateGuilds();
         await this.init();
         await this.initAppCommands();
@@ -45,16 +44,22 @@ export class OnReady extends BaseDAO {
                 console.error(e);
             }
             const me = interaction?.guild?.members?.me ?? interaction.user;
-            if (interaction.type === InteractionType.ApplicationCommand || interaction.type === InteractionType.MessageComponent) {
+            if (
+                interaction.type === InteractionType.ApplicationCommand ||
+                interaction.type === InteractionType.MessageComponent
+            ) {
                 const channel = interaction.channel;
-                if (channel && (channel.type !== ChannelType.GuildText || !channel.permissionsFor(me).has("SendMessages"))) {
+                if (
+                    channel &&
+                    (channel.type !== ChannelType.GuildText || !channel.permissionsFor(me)?.has("SendMessages"))
+                ) {
                     console.error(`cannot send warning message to this channel`, interaction);
                     return;
                 }
                 try {
-                    await InteractionUtils.replyOrFollowUp(
+                    await replyOrFollowUp(
                         interaction,
-                        "Something went wrong, please notify my developer: <@697417252320051291>"
+                        "Something went wrong, please notify my developer: <@697417252320051291>",
                     );
                 } catch (e) {
                     console.error(e);
@@ -63,18 +68,19 @@ export class OnReady extends BaseDAO {
         }
     }
 
-
     private populateGuilds(): Promise<void> {
         const guilds = this._client.guilds.cache;
         return this.ds.transaction(async transactionManager => {
             for (const [guildId] of guilds) {
-                if (await transactionManager.count(GuildableModel, {
-                    where: {
-                        guildId
-                    }
-                }) === 0) {
+                if (
+                    (await transactionManager.count(GuildableModel, {
+                        where: {
+                            guildId,
+                        },
+                    })) === 0
+                ) {
                     const guild = DbUtils.build(GuildableModel, {
-                        guildId
+                        guildId,
                     });
                     await transactionManager.save(GuildableModel, guild);
                 }
@@ -89,16 +95,16 @@ export class OnReady extends BaseDAO {
     private async cleanUpGuilds(): Promise<void> {
         const transactionManager = this.ds.manager;
         const guildsJoined = [...this._client.guilds.cache.keys()];
-        if (!ArrayUtils.isValidArray(guildsJoined)) {
+        if (guildsJoined.length === 0) {
             await transactionManager.clear(GuildableModel);
-            await this.ds.queryResultCache.clear();
+            await this.ds?.queryResultCache?.clear();
             return;
         }
         for (const guildsJoinedId of guildsJoined) {
             const guildModels = await transactionManager.find(GuildableModel, {
                 where: {
-                    "guildId": guildsJoinedId
-                }
+                    guildId: guildsJoinedId,
+                },
             });
             if (!guildModels) {
                 await transactionManager.delete(GuildableModel, {
@@ -113,26 +119,26 @@ export class OnReady extends BaseDAO {
         const allGuilds = this._client.guilds.cache;
         for (const [id, guild] of allGuilds) {
             const messagePost = await repo.findBy({
-                guildId: id
+                guildId: id,
             });
-            if (!ArrayUtils.isValidArray(messagePost)) {
+            if (messagePost.length === 0) {
                 continue;
             }
             for (const model of messagePost) {
                 try {
                     const channel = await guild.channels.fetch(model.channelId);
-                    if (!channel.isTextBased()) {
+                    if (!channel?.isTextBased()) {
                         continue;
                     }
                     const message = await channel.messages.fetch({
                         message: model.messageId,
                         force: true,
-                        cache: true
+                        cache: true,
                     });
                     console.log(`Message found: ${message}`);
                 } catch {
                     await repo.delete({
-                        guildId: id
+                        guildId: id,
                     });
                 }
             }

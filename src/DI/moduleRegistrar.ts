@@ -1,5 +1,5 @@
-import {container, FactoryFunction, InjectionToken, instanceCachingFactory} from "tsyringe";
-import {constructor} from "tsyringe/dist/typings/types/index.js";
+import { container, FactoryFunction, InjectionToken, instanceCachingFactory } from "tsyringe";
+import { constructor } from "tsyringe/dist/typings/types/index.js";
 
 export function getInstanceCashingSingletonFactory<T>(clazz: InjectionToken<T>): FactoryFunction<T> {
     return instanceCachingFactory<T>(c => {
@@ -10,8 +10,8 @@ export function getInstanceCashingSingletonFactory<T>(clazz: InjectionToken<T>):
     });
 }
 
-export function registerInstance(...instances: any): void {
+export function registerInstance(...instances: NonNullable<unknown>[]): void {
     for (const instance of instances) {
-        container.registerInstance(instance.constructor, instance);
+        container.registerInstance(instance.constructor as InjectionToken, instance);
     }
 }

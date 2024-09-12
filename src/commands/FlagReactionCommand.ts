@@ -1,18 +1,16 @@
-import {ArgsOf, Discord, On, Slash, SlashChoice, SlashOption} from "discordx";
-import {ApplicationCommandOptionType, CommandInteraction, Message, PermissionsBitField} from "discord.js";
-import {injectable} from "tsyringe";
-import {InteractionFlagModel} from "../model/DB/guild/InteractionFlag.model.js";
-import {InteractionUtils, ObjectUtil} from "../utils/Utils.js";
-import {BaseDAO} from "../DAO/BaseDAO.js";
-import {InteractionType} from "../model/enums/InteractionType.js";
-import {Repository} from "typeorm/repository/Repository.js";
-import {FlagManager} from "../manager/FlagManager.js";
+import { ArgsOf, Discord, On, Slash, SlashChoice, SlashOption } from "discordx";
+import { ApplicationCommandOptionType, CommandInteraction, PermissionsBitField } from "discord.js";
+import { injectable } from "tsyringe";
+import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";
+import { ObjectUtil, replyOrFollowUp } from "../utils/Utils.js";
+import { BaseDAO } from "../DAO/BaseDAO.js";
+import { InteractionType } from "../model/enums/InteractionType.js";
+import { Repository } from "typeorm/repository/Repository.js";
+import { FlagManager } from "../manager/FlagManager.js";
 
 @Discord()
 @injectable()
-
 export class FlagReactionCommand extends BaseDAO {
-
     public constructor(private _flagManager: FlagManager) {
         super();
     }
@@ -21,33 +19,40 @@ export class FlagReactionCommand extends BaseDAO {
     private async messageDelete([message]: ArgsOf<"messageDelete">): Promise<void> {
         const messageId = message.id;
         const repo = this.ds.getRepository(InteractionFlagModel);
-        if (message.author.id !== message.guild.members.me.id) {
+        if (message.author?.id !== message?.guild?.members?.me?.id) {
             return;
         }
-        try {
-            await repo.delete({
-                messageId,
-                guildId: message.guildId
-            });
-        } catch {
-
+        const guildId = message.guildId;
+        if (guildId) {
+            try {
+                await repo.delete({
+                    messageId,
+                    guildId,
+                });
+            } catch {
+                /* empty */
+            }
         }
     }
 
-
-    private async checkNoDupeMessages(repo: Repository<unknown>, type: InteractionType, interaction: CommandInteraction): Promise<boolean> {
-        const count = await repo.count({
-            where: {
-                guildId: interaction.guildId,
-                type: type
-            }
+    private async checkNoDupeMessages(
+        repo: Repository<InteractionFlagModel>,
+        type: InteractionType,
+        interaction: CommandInteraction,
+    ): Promise<boolean> {
+        if (!interaction.guildId) {
+            return false;
+        }
+        const count = await repo.countBy({
+            guildId: interaction.guildId,
+            type: type,
         });
         if (count !== 0) {
             setTimeout(() => {
                 interaction.deleteReply();
             }, 4000);
             const cmd = type === InteractionType.FLAG ? "flag_react" : "language_react";
-            await InteractionUtils.replyOrFollowUp(interaction, `Only one "${cmd}" can exist at one time`);
+            await replyOrFollowUp(interaction, `Only one "${cmd}" can exist at one time`);
             return true;
         }
         return false;
@@ -56,7 +61,7 @@ export class FlagReactionCommand extends BaseDAO {
     @Slash({
         description: "set the initial language reaction message",
         name: "language_react",
-        defaultMemberPermissions: PermissionsBitField.Flags.Administrator
+        defaultMemberPermissions: PermissionsBitField.Flags.Administrator,
     })
     private async languageReact(
         @SlashOption({
@@ -65,8 +70,8 @@ export class FlagReactionCommand extends BaseDAO {
             required: false,
             type: ApplicationCommandOptionType.String,
         })
-            custom: string,
-        interaction: CommandInteraction
+        custom: string,
+        interaction: CommandInteraction,
     ): Promise<void> {
         await interaction.deferReply();
         const repo = this.ds.getRepository(InteractionFlagModel);
@@ -76,37 +81,36 @@ export class FlagReactionCommand extends BaseDAO {
         }
         const messageReply = await interaction.followUp({
             fetchReply: true,
-            content: ObjectUtil.validString(custom) ? custom : "Please react with the flag of a country to get the role of the primary language of the country!"
+            content: ObjectUtil.validString(custom)
+                ? custom
+                : "Please react with the flag of a country to get the role of the primary language of the country!",
         });
-        if (!(messageReply instanceof Message)) {
-            return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
-        }
         try {
             await messageReply.channel.messages.fetch({
                 message: messageReply.id,
                 force: true,
-                cache: true
+                cache: true,
             });
         } catch {
-            return InteractionUtils.replyOrFollowUp(interaction, "I am not allowed to post/see messages in this channel");
+            return replyOrFollowUp(interaction, "I am not allowed to post/see messages in this channel");
         }
         try {
             await repo.insert({
-                guildId: interaction.guildId,
+                guildId: interaction.guildId!,
                 messageId: messageReply.id,
                 channelId: messageReply.channelId,
-                type: InteractionType.LANGUAGE
+                type: InteractionType.LANGUAGE,
             });
         } catch (e) {
             console.error(e);
-            return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
+            return replyOrFollowUp(interaction, "unknown error occurred");
         }
     }
 
     @Slash({
         description: "set the initial flag reaction message",
         name: "flag_react",
-        defaultMemberPermissions: PermissionsBitField.Flags.Administrator
+        defaultMemberPermissions: PermissionsBitField.Flags.Administrator,
     })
     private async flagReact(
         @SlashOption({
@@ -115,8 +119,8 @@ export class FlagReactionCommand extends BaseDAO {
             required: false,
             type: ApplicationCommandOptionType.String,
         })
-            custom: string,
-        interaction: CommandInteraction
+        custom: string,
+        interaction: CommandInteraction,
     ): Promise<void> {
         await interaction.deferReply();
         const repo = this.ds.getRepository(InteractionFlagModel);
@@ -126,55 +130,57 @@ export class FlagReactionCommand extends BaseDAO {
         }
         const messageReply = await interaction.followUp({
             fetchReply: true,
-            content: ObjectUtil.validString(custom) ? custom : "Please react with the flag of your country to get the role!"
+            content: ObjectUtil.validString(custom)
+                ? custom
+                : "Please react with the flag of your country to get the role!",
         });
-        if (!(messageReply instanceof Message)) {
-            return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
-        }
         try {
             await messageReply.channel.messages.fetch({
                 message: messageReply.id,
                 force: true,
-                cache: true
+                cache: true,
             });
         } catch {
-            return InteractionUtils.replyOrFollowUp(interaction, "I am not allowed to post/see messages in this channel");
+            return replyOrFollowUp(interaction, "I am not allowed to post/see messages in this channel");
         }
 
         try {
             await repo.insert({
-                guildId: interaction.guildId,
+                guildId: interaction.guildId!,
                 messageId: messageReply.id,
                 channelId: messageReply.channelId,
-                type: InteractionType.FLAG
+                type: InteractionType.FLAG,
             });
         } catch {
-            return InteractionUtils.replyOrFollowUp(interaction, "unknown error occurred");
+            return replyOrFollowUp(interaction, "unknown error occurred");
         }
     }
 
     @Slash({
         name: "make_report",
         defaultMemberPermissions: PermissionsBitField.Flags.Administrator,
-        description: "generate csv report of all members of roles made by this bot"
+        description: "generate csv report of all members of roles made by this bot",
     })
     private async makeReport(
-        @SlashChoice({name: "languages", value: InteractionType.LANGUAGE})
-        @SlashChoice({name: "countries", value: InteractionType.FLAG})
+        @SlashChoice({ name: "languages", value: InteractionType.LANGUAGE })
+        @SlashChoice({ name: "countries", value: InteractionType.FLAG })
         @SlashOption({
             name: "type",
             description: "WHat type do you wish to generate a report for",
             required: true,
             type: ApplicationCommandOptionType.Number,
         })
-            type: InteractionType,
-        interaction: CommandInteraction
+        type: InteractionType,
+        interaction: CommandInteraction,
     ): Promise<void> {
         await interaction.deferReply({
-            ephemeral: true
+            ephemeral: true,
         });
         const engine = this._flagManager.getEngineFromType(type);
-        const reportMap = await engine.getReportMap(interaction.guildId);
+        if (!engine) {
+            return;
+        }
+        const reportMap = await engine.getReportMap(interaction.guildId!);
         const csvMap: [string, number, string[]][] = [];
         for (const [role, members] of reportMap) {
             const memberArr = members.map(member => member.user.tag);
@@ -182,15 +188,17 @@ export class FlagReactionCommand extends BaseDAO {
         }
         const csvStr = csvMap.map(s => s.join(",")).join("\r\n");
         if (!ObjectUtil.validString(csvStr)) {
-            return InteractionUtils.replyOrFollowUp(interaction, "No data to generate");
+            return replyOrFollowUp(interaction, "No data to generate");
         }
-        const buf = Buffer.from(csvStr, 'utf8');
+        const buf = Buffer.from(csvStr, "utf8");
         interaction.editReply({
             content: "Report generated",
-            files: [{
-                attachment: buf,
-                name: "report.csv"
-            }]
+            files: [
+                {
+                    attachment: buf,
+                    name: "report.csv",
+                },
+            ],
         });
     }
 }

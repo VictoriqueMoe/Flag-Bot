@@ -1,24 +1,23 @@
 import countries from "i18n-iso-countries";
-import {Guild, GuildMember, Role} from "discord.js";
-import {Repository} from "typeorm";
-import {BotRoleManager} from "../../manager/BotRoleManager.js";
-import {GuildManager} from "../../manager/GuildManager.js";
-import {CountryManager} from "../../manager/CountryManager.js";
-import {DbUtils, ObjectUtil} from "../../utils/Utils.js";
-import {InteractionType} from "../../model/enums/InteractionType.js";
-import {FlagModel} from "../../model/DB/guild/Flag.model.js";
-import {AbstractFlagReactionEngine} from "./AbstractFlagReactionEngine.js";
-import {injectable} from "tsyringe";
-import {NoRolesFoundException} from "../../exceptions/NoRolesFoundException.js";
-import {DupeRoleException} from "../../exceptions/DupeRoleException.js";
+import { Guild, GuildMember, Role } from "discord.js";
+import { Repository } from "typeorm";
+import { BotRoleManager } from "../../manager/BotRoleManager.js";
+import { GuildManager } from "../../manager/GuildManager.js";
+import { CountryManager } from "../../manager/CountryManager.js";
+import { DbUtils, ObjectUtil } from "../../utils/Utils.js";
+import { InteractionType } from "../../model/enums/InteractionType.js";
+import { FlagModel } from "../../model/DB/guild/Flag.model.js";
+import { AbstractFlagReactionEngine } from "./AbstractFlagReactionEngine.js";
+import { injectable } from "tsyringe";
+import { NoRolesFoundException } from "../../exceptions/NoRolesFoundException.js";
+import { DupeRoleException } from "../../exceptions/DupeRoleException.js";
 
 @injectable()
 export class CountryFlagEngine extends AbstractFlagReactionEngine {
-
     public constructor(
         private _countryManager: CountryManager,
         botRoleManager: BotRoleManager,
-        guildManager: GuildManager
+        guildManager: GuildManager,
     ) {
         super(botRoleManager, guildManager);
     }
@@ -39,7 +38,7 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
         try {
             await guildMember.roles.add(role);
         } catch {
-
+            /* empty */
         }
     }
 
@@ -56,16 +55,19 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
         return super.handleReactionRemove(flagEmoji, guildMember);
     }
 
-
     /**
      * Get the role from the alpha code, will make a new role if one does not exist and will persist it
      * @param flagEmoji
      * @param guildId
      * @param addNew
      */
-    public override async createRoleFromFlag(flagEmoji: string, guildId: string, addNew: boolean): Promise<Role> {
+    public override async createRoleFromFlag(
+        flagEmoji: string,
+        guildId: string,
+        addNew: boolean,
+    ): Promise<Role | null> {
         const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
-        if (!ObjectUtil.validString(alpha2Code)) {
+        if (!alpha2Code) {
             return null;
         }
         const repo = this.ds.getRepository(FlagModel);
@@ -73,8 +75,8 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
             select: ["roleId", "guildId"],
             where: {
                 alpha2Code,
-                guildId
-            }
+                guildId,
+            },
         });
         const guild = await this._guildManager.getGuild(guildId);
         if (!ObjectUtil.isValidObject(fromDb)) {
@@ -83,21 +85,21 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
             }
             return null;
         }
-        const {roleId} = fromDb;
+        const { roleId } = fromDb;
         return guild.roles.fetch(roleId);
     }
 
     private async create(alpha2Code: string, guild: Guild, repo: Repository<FlagModel>): Promise<Role> {
         const country = countries.getName(alpha2Code, "en");
-        const botName = guild.members.me.displayName;
+        const botName = guild.members.me?.displayName ?? "flagBot";
         const newRole = await guild.roles.create({
             name: country,
-            reason: `Created via ${botName}`
+            reason: `Created via ${botName}`,
         });
         const newModel = DbUtils.build(FlagModel, {
             alpha2Code,
             roleId: newRole.id,
-            guildId: guild.id
+            guildId: guild.id,
         });
         await repo.save(newModel);
         return newRole;

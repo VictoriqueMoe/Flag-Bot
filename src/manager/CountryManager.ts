@@ -1,7 +1,7 @@
-import {singleton} from "tsyringe";
+import { singleton } from "tsyringe";
 import emojiUnicode from "emoji-unicode";
 import countryFlagEmoji from "country-flag-emoji";
-import {ObjectUtil} from "../utils/Utils.js";
+import { ObjectUtil } from "../utils/Utils.js";
 
 @singleton()
 export class CountryManager {
@@ -13,7 +13,7 @@ export class CountryManager {
         return alpha2Code;
     }
 
-    private getCountryFromFlag(flag: string): string {
+    private getCountryFromFlag(flag: string): string | null {
         const unicode = "U+" + emojiUnicode(flag).toUpperCase().split(" ").join(" U+");
         for (const countryData of countryFlagEmoji.list) {
             if (countryData.unicode === unicode) {

@@ -1,15 +1,14 @@
-import {singleton} from "tsyringe";
-import {GuildMember, Role} from "discord.js";
-import {FlagModel} from "../model/DB/guild/Flag.model.js";
-import {GuildManager} from "./GuildManager.js";
-import {InteractionType} from "../model/enums/InteractionType.js";
-import {BaseDAO} from "../DAO/BaseDAO.js";
-import {LanguageModel} from "../model/DB/guild/Language.model.js";
-import {Repository} from "typeorm/repository/Repository.js";
+import { singleton } from "tsyringe";
+import { GuildMember, Role } from "discord.js";
+import { FlagModel } from "../model/DB/guild/Flag.model.js";
+import { GuildManager } from "./GuildManager.js";
+import { InteractionType } from "../model/enums/InteractionType.js";
+import { BaseDAO } from "../DAO/BaseDAO.js";
+import { LanguageModel } from "../model/DB/guild/Language.model.js";
+import { Repository } from "typeorm/repository/Repository.js";
 
 @singleton()
 export class BotRoleManager extends BaseDAO {
-
     public constructor(private _guildManager: GuildManager) {
         super();
     }
@@ -19,8 +18,8 @@ export class BotRoleManager extends BaseDAO {
         const repo = this.getRepo(type);
         const allRoles = await repo.find({
             where: {
-                guildId
-            }
+                guildId,
+            },
         });
         const retArr: Role[] = [];
         for (const role of allRoles) {
@@ -39,16 +38,22 @@ export class BotRoleManager extends BaseDAO {
         const flagRepo = this.getRepo(InteractionType.FLAG);
         const langDeletedData = await languageRepo.delete({
             guildId,
-            roleId
+            roleId,
         });
         const flagDeletedData = await flagRepo.delete({
             guildId,
-            roleId
+            roleId,
         });
         const didDelete = langDeletedData.affected === 1 || flagDeletedData.affected === 1;
         if (didDelete && propagateToGuild) {
             const guild = await this._guildManager.getGuild(guildId);
-            const role = guild.roles.cache.get(roleId);
+            let role: Role | null | undefined = guild.roles.cache.get(roleId);
+            if (!role) {
+                role = await guild.roles.fetch(roleId);
+            }
+            if (!role) {
+                return false;
+            }
             try {
                 await role.delete("no more members with role");
             } catch {
@@ -67,8 +72,11 @@ export class BotRoleManager extends BaseDAO {
         }
         const fetchedRole = await guild.roles.fetch(role.id, {
             force: true,
-            cache: true
+            cache: true,
         });
+        if (!fetchedRole) {
+            return [];
+        }
         return [...fetchedRole.members.values()];
     }
 
