@@ -123,4 +123,16 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
         const { roleId } = fromDb;
         return guild.roles.fetch(roleId);
     }
+
+    public override async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
+        const repo = this.ds.getRepository(FlagModel);
+        const guild = await this._guildManager.getGuild(guildId);
+        const guildRoles = guild.roles.cache;
+        const allRoles = await repo.find({
+            where: {
+                guildId,
+            },
+        });
+        return super.buildReport(guildRoles, allRoles);
+    }
 }

@@ -1,9 +1,8 @@
 import { BaseDAO } from "../../DAO/BaseDAO.js";
 import { IFlagEngine } from "../IFlagEngine.js";
-import { GuildMember, Role } from "discord.js";
+import { Collection, GuildMember, Role } from "discord.js";
 import { InteractionType } from "../../model/enums/InteractionType.js";
 import { BotRoleManager } from "../../manager/BotRoleManager.js";
-import { FlagModel } from "../../model/DB/guild/Flag.model.js";
 import { GuildManager } from "../../manager/GuildManager.js";
 import { RestCountriesManager } from "../../manager/RestCountriesManager.js";
 import { CountryManager } from "../../manager/CountryManager.js";
@@ -31,17 +30,12 @@ export abstract class AbstractFlagReactionEngine extends BaseDAO implements IFla
         }
     }
 
-    public async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
-        const repo = this.ds.getRepository(FlagModel);
-        const guild = await this._guildManager.getGuild(guildId);
-        const guildRoles = guild.roles.cache;
-        const allRoles = await repo.find({
-            where: {
-                guildId,
-            },
-        });
+    protected buildReport<T extends { roleId: string }>(
+        guildRoles: Collection<string, Role>,
+        roleModels: T[],
+    ): Map<Role, GuildMember[]> {
         const reMap: Map<Role, GuildMember[]> = new Map();
-        for (const flagRole of allRoles) {
+        for (const flagRole of roleModels) {
             const role = guildRoles.get(flagRole.roleId);
             if (!role || role.members.size === 0) {
                 continue;
@@ -57,6 +51,7 @@ export abstract class AbstractFlagReactionEngine extends BaseDAO implements IFla
     }
 
     public abstract handleReactionAdd(guildMember: GuildMember, flagEmoji: string): Promise<void>;
+    public abstract getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>>;
 
     protected abstract createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null>;
 
