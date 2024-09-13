@@ -117,4 +117,25 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
     private hasDupes(member: GuildMember, roleToCheck: Role): boolean {
         return ObjectUtil.isValidObject(member.roles.cache.find(role => role.name === roleToCheck.name));
     }
+
+    protected override async getRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
+        const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
+        if (!alpha2Code) {
+            return null;
+        }
+        const languages = this._restCountriesManager.getCountyLanguages(alpha2Code!);
+        const repo = this.ds.getRepository(LanguageModel);
+        const lang = languages[0];
+        const languageCode = lang.code;
+        const fromDb = await repo.findOneBy({
+            languageCode,
+            guildId,
+        });
+        if (!fromDb) {
+            return null;
+        }
+        const guild = await this._guildManager.getGuild(guildId);
+        const { roleId } = fromDb;
+        return guild.roles.fetch(roleId);
+    }
 }

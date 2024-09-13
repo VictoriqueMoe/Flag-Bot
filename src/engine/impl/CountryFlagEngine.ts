@@ -102,4 +102,25 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
         }
         return false;
     }
+
+    protected override async getRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
+        const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
+        if (!alpha2Code) {
+            return null;
+        }
+        const repo = this.ds.getRepository(FlagModel);
+        const fromDb = await repo.findOne({
+            select: ["roleId", "guildId"],
+            where: {
+                alpha2Code,
+                guildId,
+            },
+        });
+        const guild = await this._guildManager.getGuild(guildId);
+        if (!fromDb) {
+            return null;
+        }
+        const { roleId } = fromDb;
+        return guild.roles.fetch(roleId);
+    }
 }
