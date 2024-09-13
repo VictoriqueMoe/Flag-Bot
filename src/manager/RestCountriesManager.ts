@@ -26,6 +26,7 @@ export class RestCountriesManager {
 
     @RunEvery(31, METHOD_EXECUTOR_TIME_UNIT.days, true)
     private async init(): Promise<void> {
+        this.countryCodes.clear();
         const response = await fetch(`${RestCountriesManager.baseUrl}/all?fields=languages,cca2`);
         if (!response.ok) {
             console.error(await response.text());
