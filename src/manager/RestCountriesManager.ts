@@ -55,18 +55,13 @@ export class RestCountriesManager {
             throw new Error("unable to load language codes");
         }
         const allCountryCode: CountryResponse[] = await response.json();
-
-        // Remove english from countries where it is official, but not primary
-        const transformedCountryCode = allCountryCode.map(country => {
-            if (this.englishNotPrimary.includes(country.cca2)) {
-                if (country.languages && country.languages.eng) {
-                    delete country.languages.eng;
+        for (const countryResponse of allCountryCode) {
+            // Remove english from countries where it is official, but not primary
+            if (this.englishNotPrimary.includes(countryResponse.cca2)) {
+                if (countryResponse.languages && countryResponse.languages.eng) {
+                    delete countryResponse.languages.eng;
                 }
             }
-            return country;
-        });
-
-        for (const countryResponse of transformedCountryCode) {
             this.countryCodes.set(countryResponse.cca2, {
                 languages: countryResponse.languages,
             });
