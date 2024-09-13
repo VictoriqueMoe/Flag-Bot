@@ -6,6 +6,28 @@ import METHOD_EXECUTOR_TIME_UNIT from "../model/enums/METHOD_EXECUTOR_TIME_UNIT.
 @singleton()
 export class RestCountriesManager {
     private static readonly baseUrl = `https://restcountries.com/v3.1`;
+    private englishNotPrimary: string[] = [
+        "BI",
+        "CM",
+        "SZ",
+        "IN",
+        "KI",
+        "LS",
+        "MT",
+        "MH",
+        "NA",
+        "NR",
+        "PK",
+        "PW",
+        "PH",
+        "RW",
+        "WS",
+        "SC",
+        "SD",
+        "TO",
+        "TV",
+        "VU",
+    ];
     private countryCodes: Map<string, Country> = new Map();
 
     public getCountyLanguages(cca2: string): CountryLanguage[] {
@@ -26,7 +48,6 @@ export class RestCountriesManager {
 
     @RunEvery(31, METHOD_EXECUTOR_TIME_UNIT.days, true)
     private async init(): Promise<void> {
-        const englishNotPrimary = "BI,CM,SZ,IN,KI,LS,MT,MH,NA,NR,PK,PW,PH,RW,WS,SC,SD,TO,TV,VU";
         this.countryCodes.clear();
         const response = await fetch(`${RestCountriesManager.baseUrl}/all?fields=languages,cca2`);
         if (!response.ok) {
@@ -37,7 +58,7 @@ export class RestCountriesManager {
 
         // Remove english from countries where it is official, but not primary
         const transformedCountryCode = allCountryCode.map(country => {
-            if (englishNotPrimary.indexOf(country.cca2) !== -1) {
+            if (this.englishNotPrimary.includes(country.cca2)) {
                 if (country.languages && country.languages.eng) {
                     delete country.languages.eng;
                 }
