@@ -26,6 +26,7 @@ export class RestCountriesManager {
 
     @RunEvery(31, METHOD_EXECUTOR_TIME_UNIT.days, true)
     private async init(): Promise<void> {
+        const englishNotPrimary = "BI,CM,SZ,IN,KI,LS,MT,MH,NA,NR,PK,PW,PH,RW,WS,SC,SD,TO,TV,VU";
         this.countryCodes.clear();
         const response = await fetch(`${RestCountriesManager.baseUrl}/all?fields=languages,cca2`);
         if (!response.ok) {
@@ -33,7 +34,18 @@ export class RestCountriesManager {
             throw new Error("unable to load language codes");
         }
         const allCountryCode: CountryResponse[] = await response.json();
-        for (const countryResponse of allCountryCode) {
+
+        // Remove english from countries where it is official, but not primary
+        const transformedCountryCode = allCountryCode.map(country => {
+            if (englishNotPrimary.indexOf(country.cca2) !== -1) {
+                if (country.languages && country.languages.eng) {
+                    delete country.languages.eng;
+                }
+            }
+            return country;
+        });
+
+        for (const countryResponse of transformedCountryCode) {
             this.countryCodes.set(countryResponse.cca2, {
                 languages: countryResponse.languages,
             });
