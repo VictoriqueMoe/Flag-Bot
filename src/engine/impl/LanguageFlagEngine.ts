@@ -16,12 +16,12 @@ import { NoRolesFoundException } from "../../exceptions/NoRolesFoundException.js
 @injectable()
 export class LanguageFlagEngine extends AbstractFlagReactionEngine {
     public constructor(
-        private _restCountriesManager: RestCountriesManager,
-        private _countryManager: CountryManager,
+        restCountriesManager: RestCountriesManager,
+        countryManager: CountryManager,
         botRoleManager: BotRoleManager,
         guildManager: GuildManager,
     ) {
-        super(botRoleManager, guildManager);
+        super(botRoleManager, guildManager, restCountriesManager, countryManager);
     }
 
     public get type(): InteractionType {
@@ -33,7 +33,7 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         guildMember: GuildMember,
         reaction?: MessageReaction,
     ): Promise<void> {
-        const role = await this.createRoleFromFlag(flagEmoji, guildMember.guild.id, false);
+        const role = await this.getRoleFromFlag(flagEmoji, guildMember.guild.id);
         if (!role) {
             return;
         }
@@ -51,7 +51,7 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
                 if (!reactionName) {
                     continue;
                 }
-                const roleFromEmoji = await this.createRoleFromFlag(reactionName, guildMember.guild.id, false);
+                const roleFromEmoji = await this.getRoleFromFlag(reactionName, guildMember.guild.id);
                 if (roleFromEmoji && roleFromEmoji.name === roleName) {
                     hasOtherLang = true;
                     break;
@@ -68,11 +68,11 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
 
     public override async handleReactionAdd(guildMember: GuildMember, flagEmoji: string): Promise<void> {
         const guildId = guildMember.guild.id;
-        const role = await this.createRoleFromFlag(flagEmoji, guildId, true);
+        const role = await this.createRoleFromFlag(flagEmoji, guildId);
         if (!role) {
             throw new NoRolesFoundException();
         }
-        if (this._hasDupes(guildMember, role)) {
+        if (this.hasDupes(guildMember, role)) {
             throw new DupeRoleException();
         }
         try {
@@ -82,38 +82,20 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         }
     }
 
-    public override async createRoleFromFlag(
-        flagEmoji: string,
-        guildId: string,
-        addNew: boolean,
-    ): Promise<Role | null> {
-        const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
-        if (!ObjectUtil.validString(alpha2Code)) {
-            return null;
-        }
-        const languages = await this._restCountriesManager.getCountyLanguages(alpha2Code!);
-        if (languages.length !== 1) {
-            // countries with more than one language are not yet supported
-            throw new NoRolesFoundException();
-        }
-
-        const repo = this.ds.getRepository(LanguageModel);
-        const lang = languages[0];
-        const languageCode = lang.code;
-
-        const fromDb = await repo.findOneBy({
-            languageCode,
-            guildId,
-        });
-        const guild = await this._guildManager.getGuild(guildId);
-        if (!fromDb) {
-            if (addNew) {
-                return this.create(lang, guild, repo);
+    public override async createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
+        const role = await this.getRoleFromFlag(flagEmoji, guildId);
+        if (!role) {
+            const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
+            if (!alpha2Code) {
+                return null;
             }
-            return null;
+            const languages = this._restCountriesManager.getCountyLanguages(alpha2Code);
+            const repo = this.ds.getRepository(LanguageModel);
+            const guild = await this._guildManager.getGuild(guildId);
+            const lang = languages[0];
+            return this.create(lang, guild, repo);
         }
-        const { roleId } = fromDb;
-        return guild.roles.fetch(roleId);
+        return role;
     }
 
     private async create(lang: CountryLanguage, guild: Guild, repo: Repository<LanguageModel>): Promise<Role> {
@@ -132,7 +114,7 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         return newRole;
     }
 
-    private _hasDupes(member: GuildMember, roleToCheck: Role): boolean {
+    private hasDupes(member: GuildMember, roleToCheck: Role): boolean {
         return ObjectUtil.isValidObject(member.roles.cache.find(role => role.name === roleToCheck.name));
     }
 }

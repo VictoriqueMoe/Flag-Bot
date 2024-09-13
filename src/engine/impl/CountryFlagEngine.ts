@@ -4,22 +4,24 @@ import { Repository } from "typeorm";
 import { BotRoleManager } from "../../manager/BotRoleManager.js";
 import { GuildManager } from "../../manager/GuildManager.js";
 import { CountryManager } from "../../manager/CountryManager.js";
-import { DbUtils, ObjectUtil } from "../../utils/Utils.js";
+import { DbUtils } from "../../utils/Utils.js";
 import { InteractionType } from "../../model/enums/InteractionType.js";
 import { FlagModel } from "../../model/DB/guild/Flag.model.js";
 import { AbstractFlagReactionEngine } from "./AbstractFlagReactionEngine.js";
 import { injectable } from "tsyringe";
 import { NoRolesFoundException } from "../../exceptions/NoRolesFoundException.js";
 import { DupeRoleException } from "../../exceptions/DupeRoleException.js";
+import { RestCountriesManager } from "../../manager/RestCountriesManager.js";
 
 @injectable()
 export class CountryFlagEngine extends AbstractFlagReactionEngine {
     public constructor(
-        private _countryManager: CountryManager,
+        restCountriesManager: RestCountriesManager,
+        countryManager: CountryManager,
         botRoleManager: BotRoleManager,
         guildManager: GuildManager,
     ) {
-        super(botRoleManager, guildManager);
+        super(botRoleManager, guildManager, restCountriesManager, countryManager);
     }
 
     public override get type(): InteractionType {
@@ -28,10 +30,10 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
 
     public override async handleReactionAdd(guildMember: GuildMember, flagEmoji: string): Promise<void> {
         const guildId = guildMember.guild.id;
-        if (await this._hasDupes(guildMember)) {
+        if (await this.hasDupes(guildMember)) {
             throw new DupeRoleException();
         }
-        const role = await this.createRoleFromFlag(flagEmoji, guildId, true);
+        const role = await this.createRoleFromFlag(flagEmoji, guildId);
         if (!role) {
             throw new NoRolesFoundException();
         }
@@ -43,7 +45,7 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
     }
 
     public override async handleReactionRemove(flagEmoji: string, guildMember: GuildMember): Promise<void> {
-        const role = await this.createRoleFromFlag(flagEmoji, guildMember.guild.id, false);
+        const role = await this.getRoleFromFlag(flagEmoji, guildMember.guild.id);
         if (!role) {
             return;
         }
@@ -61,32 +63,18 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
      * @param guildId
      * @param addNew
      */
-    public override async createRoleFromFlag(
-        flagEmoji: string,
-        guildId: string,
-        addNew: boolean,
-    ): Promise<Role | null> {
-        const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
-        if (!alpha2Code) {
-            return null;
-        }
-        const repo = this.ds.getRepository(FlagModel);
-        const fromDb = await repo.findOne({
-            select: ["roleId", "guildId"],
-            where: {
-                alpha2Code,
-                guildId,
-            },
-        });
-        const guild = await this._guildManager.getGuild(guildId);
-        if (!ObjectUtil.isValidObject(fromDb)) {
-            if (addNew) {
-                return this.create(alpha2Code, guild, repo);
+    public override async createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
+        const role = await this.getRoleFromFlag(flagEmoji, guildId);
+        if (!role) {
+            const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
+            if (!alpha2Code) {
+                return null;
             }
-            return null;
+            const guild = await this._guildManager.getGuild(guildId);
+            const repo = this.ds.getRepository(FlagModel);
+            return this.create(alpha2Code, guild, repo);
         }
-        const { roleId } = fromDb;
-        return guild.roles.fetch(roleId);
+        return role;
     }
 
     private async create(alpha2Code: string, guild: Guild, repo: Repository<FlagModel>): Promise<Role> {
@@ -105,7 +93,7 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
         return newRole;
     }
 
-    private async _hasDupes(member: GuildMember): Promise<boolean> {
+    private async hasDupes(member: GuildMember): Promise<boolean> {
         const allRoles = await this._botRoleManager.getAllRolesFromDb(member.guild.id, InteractionType.FLAG);
         for (const role of allRoles) {
             if (member.roles.cache.has(role.id)) {

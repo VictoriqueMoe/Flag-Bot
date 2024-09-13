@@ -1,4 +1,4 @@
-import { ArgsOf, Discord, On } from "discordx";
+import { type ArgsOf, Discord, On } from "discordx";
 import { injectable } from "tsyringe";
 import { ObjectUtil } from "../utils/Utils.js";
 import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";

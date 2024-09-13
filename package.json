@@ -41,20 +41,20 @@
     "dotenv": "^16.4.5",
     "emoji-unicode": "^2.0.1",
     "i18n-iso-countries": "^7.12.0",
-    "node-fetch": "^3.3.2",
     "nodemon": "^3.1.4",
     "reflect-metadata": "^0.2.2",
+    "toad-scheduler": "^3.0.1",
     "tsyringe": "^4.8.0",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
-    "eslint": "^8.57.0",
-    "typescript-eslint": "^7.16.1",
-    "prettier": "3.3.3",
     "@types/node": "^22.5.4",
+    "eslint": "^8.57.0",
+    "prettier": "3.3.3",
     "ts-node": "^10.9.2",
     "tslib": "^2.7.0",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^7.16.1"
   }
 }

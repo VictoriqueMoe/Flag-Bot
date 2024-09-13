@@ -5,11 +5,16 @@ import { InteractionType } from "../../model/enums/InteractionType.js";
 import { BotRoleManager } from "../../manager/BotRoleManager.js";
 import { FlagModel } from "../../model/DB/guild/Flag.model.js";
 import { GuildManager } from "../../manager/GuildManager.js";
+import { LanguageModel } from "../../model/DB/guild/Language.model.js";
+import { RestCountriesManager } from "../../manager/RestCountriesManager.js";
+import { CountryManager } from "../../manager/CountryManager.js";
 
 export abstract class AbstractFlagReactionEngine extends BaseDAO implements IFlagEngine {
     protected constructor(
         protected _botRoleManager: BotRoleManager,
         protected _guildManager: GuildManager,
+        protected _restCountriesManager: RestCountriesManager,
+        protected _countryManager: CountryManager,
     ) {
         super();
     }
@@ -17,7 +22,7 @@ export abstract class AbstractFlagReactionEngine extends BaseDAO implements IFla
     public abstract get type(): InteractionType;
 
     public async handleReactionRemove(flagEmoji: string, guildMember: GuildMember): Promise<void> {
-        const role = await this.createRoleFromFlag(flagEmoji, guildMember.guild.id, false);
+        const role = await this.getRoleFromFlag(flagEmoji, guildMember.guild.id);
         if (!role) {
             return;
         }
@@ -52,7 +57,28 @@ export abstract class AbstractFlagReactionEngine extends BaseDAO implements IFla
         return reMap;
     }
 
+    protected async getRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
+        const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
+        if (!alpha2Code) {
+            return null;
+        }
+        const languages = this._restCountriesManager.getCountyLanguages(alpha2Code!);
+        const repo = this.ds.getRepository(LanguageModel);
+        const lang = languages[0];
+        const languageCode = lang.code;
+        const fromDb = await repo.findOneBy({
+            languageCode,
+            guildId,
+        });
+        if (!fromDb) {
+            return null;
+        }
+        const guild = await this._guildManager.getGuild(guildId);
+        const { roleId } = fromDb;
+        return guild.roles.fetch(roleId);
+    }
+
     public abstract handleReactionAdd(guildMember: GuildMember, flagEmoji: string): Promise<void>;
 
-    protected abstract createRoleFromFlag(flagEmoji: string, guildId: string, addNew: boolean): Promise<Role | null>;
+    protected abstract createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null>;
 }

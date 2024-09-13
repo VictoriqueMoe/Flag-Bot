@@ -1,4 +1,4 @@
-import { ArgsOf, Discord, On, Slash, SlashChoice, SlashOption } from "discordx";
+import { type ArgsOf, Discord, On, Slash, SlashChoice, SlashOption } from "discordx";
 import { ApplicationCommandOptionType, CommandInteraction, PermissionsBitField } from "discord.js";
 import { injectable } from "tsyringe";
 import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";

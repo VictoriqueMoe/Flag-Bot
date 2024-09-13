@@ -1,5 +1,5 @@
 import { BaseDAO } from "../DAO/BaseDAO.js";
-import { ArgsOf, Client, Discord, On, RestArgsOf } from "discordx";
+import { type ArgsOf, Client, Discord, DIService, On, RestArgsOf } from "discordx";
 import { ChannelType } from "discord.js";
 import { injectable } from "tsyringe";
 import { DbUtils, replyOrFollowUp } from "../utils/Utils.js";
@@ -21,6 +21,7 @@ export class OnReady extends BaseDAO {
     @On()
     private async ready([client]: ArgsOf<"ready">): Promise<void> {
         await client.user.setActivity("FLAGS!!", { type: ActivityType.Playing });
+        this.initDi();
         await this.populateGuilds();
         await this.init();
         await this.initAppCommands();
@@ -86,6 +87,10 @@ export class OnReady extends BaseDAO {
                 }
             }
         });
+    }
+
+    private initDi(): void {
+        DIService.engine.getAllServices();
     }
 
     public initAppCommands(): Promise<void> {
