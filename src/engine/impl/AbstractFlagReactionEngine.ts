@@ -51,6 +51,7 @@ export abstract class AbstractFlagReactionEngine extends BaseDAO implements IFla
     }
 
     public abstract handleReactionAdd(guildMember: GuildMember, flagEmoji: string): Promise<void>;
+
     public abstract getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>>;
 
     protected abstract createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null>;

@@ -7,7 +7,7 @@ import { GuildManager } from "../../manager/GuildManager.js";
 import { DbUtils, ObjectUtil } from "../../utils/Utils.js";
 import { LanguageModel } from "../../model/DB/guild/Language.model.js";
 import { Repository } from "typeorm";
-import { CountryLanguage } from "../../model/typeings.js";
+import { CountryInfo } from "../../model/typeings.js";
 import { AbstractFlagReactionEngine } from "./AbstractFlagReactionEngine.js";
 import { injectable } from "tsyringe";
 import { DupeRoleException } from "../../exceptions/DupeRoleException.js";
@@ -89,20 +89,24 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
             if (!alpha2Code) {
                 return null;
             }
-            const languages = this._restCountriesManager.getCountyLanguages(alpha2Code);
+            const countryInfo = await this._restCountriesManager.getCountyLanguages(alpha2Code);
+            if (!countryInfo) {
+                return null;
+            }
             const repo = this.ds.getRepository(LanguageModel);
             const guild = await this._guildManager.getGuild(guildId);
-            const lang = languages[0];
-            return this.create(lang, guild, repo);
+            return this.create(countryInfo, guild, repo);
         }
         return role;
     }
 
-    private async create(lang: CountryLanguage, guild: Guild, repo: Repository<LanguageModel>): Promise<Role> {
+    private async create(countryInfo: CountryInfo, guild: Guild, repo: Repository<LanguageModel>): Promise<Role> {
+        const lang = countryInfo.languageInfo[0];
         const botName = guild.members.me?.displayName ?? "FlagBot";
         const newRole = await guild.roles.create({
             name: lang.name,
             reason: `Created via ${botName}`,
+            color: countryInfo.primaryColour,
         });
         const newModel = DbUtils.build(LanguageModel, {
             roleId: newRole.id,
@@ -123,9 +127,12 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         if (!alpha2Code) {
             return null;
         }
-        const languages = this._restCountriesManager.getCountyLanguages(alpha2Code!);
+        const countryInfo = await this._restCountriesManager.getCountyLanguages(alpha2Code!);
+        if (!countryInfo) {
+            return null;
+        }
         const repo = this.ds.getRepository(LanguageModel);
-        const lang = languages[0];
+        const lang = countryInfo.languageInfo[0];
         const languageCode = lang.code;
         const fromDb = await repo.findOneBy({
             languageCode,

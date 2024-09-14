@@ -13,7 +13,10 @@ export class BotRoleManager extends BaseDAO {
         super();
     }
 
-    public async getAllRolesFromDb(guildId: string, type: InteractionType): Promise<Role[]> {
+    public async getAllRolesFromDb(
+        guildId: string,
+        type: InteractionType,
+    ): Promise<{ role: Role; dbRole: LanguageModel | FlagModel }[]> {
         const guild = await this._guildManager.getGuild(guildId);
         const repo = this.getRepo(type);
         const allRoles = await repo.find({
@@ -21,14 +24,17 @@ export class BotRoleManager extends BaseDAO {
                 guildId,
             },
         });
-        const retArr: Role[] = [];
+        const retArr: { role: Role; dbRole: LanguageModel | FlagModel }[] = [];
         for (const role of allRoles) {
             const guildRole = guild.roles.cache.get(role.roleId);
             if (!guildRole) {
                 await this.removeRoleBinding(guildId, role.roleId, false);
                 continue;
             }
-            retArr.push(guildRole);
+            retArr.push({
+                role: guildRole,
+                dbRole: role,
+            });
         }
         return retArr;
     }

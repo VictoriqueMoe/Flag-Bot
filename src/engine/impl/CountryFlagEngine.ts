@@ -1,5 +1,4 @@
-import countries from "i18n-iso-countries";
-import { Guild, GuildMember, Role } from "discord.js";
+import { Guild, GuildMember, HexColorString, Role } from "discord.js";
 import { Repository } from "typeorm";
 import { BotRoleManager } from "../../manager/BotRoleManager.js";
 import { GuildManager } from "../../manager/GuildManager.js";
@@ -12,6 +11,7 @@ import { injectable } from "tsyringe";
 import { NoRolesFoundException } from "../../exceptions/NoRolesFoundException.js";
 import { DupeRoleException } from "../../exceptions/DupeRoleException.js";
 import { RestCountriesManager } from "../../manager/RestCountriesManager.js";
+import { CountryInfo } from "../../model/typeings.js";
 
 @injectable()
 export class CountryFlagEngine extends AbstractFlagReactionEngine {
@@ -72,20 +72,29 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
             }
             const guild = await this._guildManager.getGuild(guildId);
             const repo = this.ds.getRepository(FlagModel);
-            return this.create(alpha2Code, guild, repo);
+            const countryInfo = await this._restCountriesManager.getCountyLanguages(alpha2Code);
+            if (!countryInfo) {
+                return null;
+            }
+            return this.create(countryInfo, guild, repo);
         }
         return role;
     }
 
-    private async create(alpha2Code: string, guild: Guild, repo: Repository<FlagModel>): Promise<Role> {
-        const country = countries.getName(alpha2Code, "en");
+    private async create(
+        countryInfo: CountryInfo,
+        guild: Guild,
+        repo: Repository<FlagModel>,
+        colour?: HexColorString,
+    ): Promise<Role> {
         const botName = guild.members.me?.displayName ?? "flagBot";
         const newRole = await guild.roles.create({
-            name: country,
+            name: countryInfo.name.common,
             reason: `Created via ${botName}`,
+            color: colour,
         });
         const newModel = DbUtils.build(FlagModel, {
-            alpha2Code,
+            alpha2Code: countryInfo.cca2,
             roleId: newRole.id,
             guildId: guild.id,
         });
@@ -95,8 +104,8 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
 
     private async hasDupes(member: GuildMember): Promise<boolean> {
         const allRoles = await this._botRoleManager.getAllRolesFromDb(member.guild.id, InteractionType.FLAG);
-        for (const role of allRoles) {
-            if (member.roles.cache.has(role.id)) {
+        for (const roleInfo of allRoles) {
+            if (member.roles.cache.has(roleInfo.role.id)) {
                 return true;
             }
         }

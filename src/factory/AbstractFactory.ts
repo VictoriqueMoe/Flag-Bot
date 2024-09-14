@@ -1,7 +1,6 @@
-import type {IDiFactory} from "./IDiFactory.js";
+import type { IDiFactory } from "./IDiFactory.js";
 
 export abstract class AbstractFactory<T> implements IDiFactory<T> {
-
     private readonly _engines: Set<T>;
 
     protected constructor(engines: T[]) {

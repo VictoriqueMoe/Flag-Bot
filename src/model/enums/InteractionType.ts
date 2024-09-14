@@ -1,4 +1,4 @@
 export enum InteractionType {
     FLAG,
-    LANGUAGE
+    LANGUAGE,
 }

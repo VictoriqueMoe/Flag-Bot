@@ -1,5 +1,5 @@
-import {DataSource} from "typeorm";
-import {container} from "tsyringe";
+import { DataSource } from "typeorm";
+import { container } from "tsyringe";
 
 export abstract class BaseDAO {
     protected constructor() {

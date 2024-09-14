@@ -1,7 +1,7 @@
-import {singleton} from "tsyringe";
-import {IFlagEngine} from "../engine/IFlagEngine.js";
-import {FlagFactory} from "../factory/impl/FlagFactory.js";
-import {InteractionType} from "../model/enums/InteractionType.js";
+import { singleton } from "tsyringe";
+import { IFlagEngine } from "../engine/IFlagEngine.js";
+import { FlagFactory } from "../factory/impl/FlagFactory.js";
+import { InteractionType } from "../model/enums/InteractionType.js";
 
 @singleton()
 export class FlagManager {

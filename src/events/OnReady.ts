@@ -6,11 +6,15 @@ import { DbUtils, replyOrFollowUp } from "../utils/Utils.js";
 import { GuildableModel } from "../model/DB/guild/Guildable.model.js";
 import { ActivityType, InteractionType } from "discord-api-types/v10";
 import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";
+import { RestCountriesManager } from "../manager/RestCountriesManager.js";
 
 @Discord()
 @injectable()
 export class OnReady extends BaseDAO {
-    public constructor(private _client: Client) {
+    public constructor(
+        private _client: Client,
+        private restCountriesManager: RestCountriesManager,
+    ) {
         super();
     }
 

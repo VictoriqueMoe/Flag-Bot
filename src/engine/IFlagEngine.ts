@@ -1,8 +1,7 @@
-import {GuildMember, MessageReaction, PartialMessageReaction, Role} from "discord.js";
-import {InteractionType} from "../model/enums/InteractionType.js";
+import { GuildMember, MessageReaction, PartialMessageReaction, Role } from "discord.js";
+import { InteractionType } from "../model/enums/InteractionType.js";
 
 export interface IFlagEngine {
-
     /**
      * Get the type of interaction this engine supports
      * @returns {InteractionType}
@@ -16,7 +15,11 @@ export interface IFlagEngine {
      * @param reaction
      * @returns {Promise<void>}
      */
-    handleReactionAdd(guildMember: GuildMember, flagEmoji: string, reaction?: MessageReaction | PartialMessageReaction): Promise<void>;
+    handleReactionAdd(
+        guildMember: GuildMember,
+        flagEmoji: string,
+        reaction?: MessageReaction | PartialMessageReaction,
+    ): Promise<void>;
 
     /**
      * Handle when a user removes a flag reaction
@@ -25,7 +28,11 @@ export interface IFlagEngine {
      * @param reaction
      * @returns {Promise<void>}
      */
-    handleReactionRemove(flagEmoji: string, guildMember: GuildMember, reaction?: MessageReaction | PartialMessageReaction): Promise<void>;
+    handleReactionRemove(
+        flagEmoji: string,
+        guildMember: GuildMember,
+        reaction?: MessageReaction | PartialMessageReaction,
+    ): Promise<void>;
 
     /**
      * Get a report of all users who  have reacted with flags
