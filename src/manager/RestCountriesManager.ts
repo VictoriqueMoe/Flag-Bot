@@ -112,7 +112,9 @@ export class RestCountriesManager {
         if (this.colourCache.has(url)) {
             return this.colourCache.get(url)!;
         }
-        const colourInfo = await getAverageColor(url);
+        const colourInfo = await getAverageColor(url, {
+            algorithm: "dominant",
+        });
         const hex = colourInfo.hex as HexColorString;
         this.colourCache.set(url, hex);
         return hex;
