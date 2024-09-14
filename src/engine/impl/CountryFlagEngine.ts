@@ -1,4 +1,4 @@
-import { Guild, GuildMember, HexColorString, Role } from "discord.js";
+import { Guild, GuildMember, Role } from "discord.js";
 import { Repository } from "typeorm";
 import { BotRoleManager } from "../../manager/BotRoleManager.js";
 import { GuildManager } from "../../manager/GuildManager.js";
@@ -81,17 +81,12 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine {
         return role;
     }
 
-    private async create(
-        countryInfo: CountryInfo,
-        guild: Guild,
-        repo: Repository<FlagModel>,
-        colour?: HexColorString,
-    ): Promise<Role> {
+    private async create(countryInfo: CountryInfo, guild: Guild, repo: Repository<FlagModel>): Promise<Role> {
         const botName = guild.members.me?.displayName ?? "flagBot";
         const newRole = await guild.roles.create({
             name: countryInfo.name.common,
             reason: `Created via ${botName}`,
-            color: colour,
+            color: countryInfo.primaryColour,
         });
         const newModel = DbUtils.build(FlagModel, {
             alpha2Code: countryInfo.cca2,
