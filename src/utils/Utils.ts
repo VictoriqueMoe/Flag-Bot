@@ -1,22 +1,4 @@
 import { CommandInteraction, InteractionReplyOptions, MessageComponentInteraction } from "discord.js";
-import { DataSource, DeepPartial, EntityTarget } from "typeorm";
-import { container } from "tsyringe";
-
-export class DbUtils {
-    private static _ds: DataSource;
-
-    /**
-     * Build an entity by injecting props as an object
-     * @param instance
-     * @param data
-     */
-    public static build<T>(instance: EntityTarget<T>, data: DeepPartial<T>): T {
-        if (!DbUtils._ds) {
-            DbUtils._ds = container.resolve(DataSource);
-        }
-        return DbUtils._ds.manager.create(instance, data);
-    }
-}
 
 export class ObjectUtil {
     public static guid(): string {

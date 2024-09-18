@@ -1,18 +1,15 @@
 import { IGuildAware } from "./IGuildAware.js";
-import { Column, CreateDateColumn, RelationOptions, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, PrimaryGeneratedColumn, RelationOptions, UpdateDateColumn } from "typeorm";
 
 export abstract class AbstractModel implements IGuildAware {
-    protected static readonly joinCol = "guildId";
+    public static readonly joinCol = "guildId";
 
-    protected static readonly cascadeOps: RelationOptions = {
+    public static readonly cascadeOps: RelationOptions = {
         onDelete: "CASCADE",
         onUpdate: "CASCADE",
     };
 
-    @Column({
-        generated: "increment",
-        primary: true,
-    })
+    @PrimaryGeneratedColumn("increment")
     public id: number;
 
     @Column()

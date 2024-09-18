@@ -3,12 +3,13 @@ import { Guild, GuildMember, MessageReaction, Role } from "discord.js";
 import { RestCountriesManager } from "../../manager/RestCountriesManager.js";
 import { BotRoleManager } from "../../manager/BotRoleManager.js";
 import { GuildManager } from "../../manager/GuildManager.js";
-import { DbUtils, ObjectUtil } from "../../utils/Utils.js";
+import { ObjectUtil } from "../../utils/Utils.js";
 import { LanguageModel } from "../../model/DB/guild/Language.model.js";
-import { Repository } from "typeorm";
 import { CountryInfo } from "../../model/typeings.js";
 import { AbstractFlagReactionEngine } from "./AbstractFlagReactionEngine.js";
 import { injectable } from "tsyringe";
+import { LanguageRepo } from "../../db/repo/LanguageRepo.js";
+import { Builder } from "builder-pattern";
 
 @injectable()
 export class LanguageFlagEngine extends AbstractFlagReactionEngine {
@@ -16,6 +17,7 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         restCountriesManager: RestCountriesManager,
         botRoleManager: BotRoleManager,
         guildManager: GuildManager,
+        private languageRepo: LanguageRepo,
     ) {
         super(botRoleManager, guildManager, restCountriesManager);
     }
@@ -69,14 +71,13 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
             if (!countryInfo) {
                 return null;
             }
-            const repo = this.ds.getRepository(LanguageModel);
             const guild = await this._guildManager.getGuild(guildId);
-            return this.create(countryInfo, guild, repo);
+            return this.create(countryInfo, guild);
         }
         return role;
     }
 
-    private async create(countryInfo: CountryInfo, guild: Guild, repo: Repository<LanguageModel>): Promise<Role> {
+    private async create(countryInfo: CountryInfo, guild: Guild): Promise<Role> {
         const lang = countryInfo.languageInfo[0];
         const botName = guild.members.me?.displayName ?? "FlagBot";
         const newRole = await guild.roles.create({
@@ -84,13 +85,13 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
             reason: `Created via ${botName}`,
             color: countryInfo.primaryColour,
         });
-        const newModel = DbUtils.build(LanguageModel, {
+        const newModel = Builder(LanguageModel, {
             roleId: newRole.id,
             guildId: guild.id,
-            languageName: lang.name,
             languageCode: lang.code,
         });
-        await repo.save(newModel);
+
+        await this.languageRepo.createLanguageEntry(newModel.build());
         return newRole;
     }
 
@@ -105,13 +106,9 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         if (!countryInfo) {
             return null;
         }
-        const repo = this.ds.getRepository(LanguageModel);
         const lang = countryInfo.languageInfo[0];
         const languageCode = lang.code;
-        const fromDb = await repo.findOneBy({
-            languageCode,
-            guildId,
-        });
+        const fromDb = await this.languageRepo.getLanguageByGuildId(languageCode, guildId);
         if (!fromDb) {
             return null;
         }
@@ -121,14 +118,9 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
     }
 
     public override async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
-        const repo = this.ds.getRepository(LanguageModel);
         const guild = await this._guildManager.getGuild(guildId);
         const guildRoles = guild.roles.cache;
-        const allRoles = await repo.find({
-            where: {
-                guildId,
-            },
-        });
-        return super.buildReport(guildRoles, allRoles);
+        const allLanguages = await this.languageRepo.getAllEntries(guildId);
+        return super.buildReport(guildRoles, allLanguages);
     }
 }

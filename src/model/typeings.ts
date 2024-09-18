@@ -2,6 +2,7 @@ import { HexColorString } from "discord.js";
 import { InteractionType } from "./enums/InteractionType.js";
 import { FlagModel } from "./DB/guild/Flag.model.js";
 import { LanguageModel } from "./DB/guild/Language.model.js";
+import { NationalityModel } from "./DB/guild/Nationality.model.js";
 
 export type Country = {
     languages: Languages;
@@ -56,4 +57,5 @@ export type Flags = {
 export type ModelTypeMapping = {
     [InteractionType.FLAG]: FlagModel;
     [InteractionType.LANGUAGE]: LanguageModel;
+    [InteractionType.NATIONALITY]: NationalityModel;
 };

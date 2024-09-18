@@ -1,4 +1,3 @@
-import { BaseDAO } from "../../DAO/BaseDAO.js";
 import { IFlagEngine } from "../IFlagEngine.js";
 import { Collection, GuildMember, Role } from "discord.js";
 import { InteractionType } from "../../model/enums/InteractionType.js";
@@ -8,14 +7,12 @@ import { RestCountriesManager } from "../../manager/RestCountriesManager.js";
 import { DupeRoleException } from "../../exceptions/DupeRoleException.js";
 import { NoRolesFoundException } from "../../exceptions/NoRolesFoundException.js";
 
-export abstract class AbstractFlagReactionEngine extends BaseDAO implements IFlagEngine {
+export abstract class AbstractFlagReactionEngine implements IFlagEngine {
     protected constructor(
         protected _botRoleManager: BotRoleManager,
         protected _guildManager: GuildManager,
         protected _restCountriesManager: RestCountriesManager,
-    ) {
-        super();
-    }
+    ) {}
 
     public async handleReactionRemove(flagEmoji: string, guildMember: GuildMember): Promise<void> {
         const role = await this.getRoleFromFlag(flagEmoji, guildMember.guild.id);
