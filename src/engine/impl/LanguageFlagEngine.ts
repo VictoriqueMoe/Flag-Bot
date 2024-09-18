@@ -1,7 +1,6 @@
 import { InteractionType } from "../../model/enums/InteractionType.js";
 import { Guild, GuildMember, MessageReaction, Role } from "discord.js";
 import { RestCountriesManager } from "../../manager/RestCountriesManager.js";
-import { CountryManager } from "../../manager/CountryManager.js";
 import { BotRoleManager } from "../../manager/BotRoleManager.js";
 import { GuildManager } from "../../manager/GuildManager.js";
 import { DbUtils, ObjectUtil } from "../../utils/Utils.js";
@@ -10,18 +9,15 @@ import { Repository } from "typeorm";
 import { CountryInfo } from "../../model/typeings.js";
 import { AbstractFlagReactionEngine } from "./AbstractFlagReactionEngine.js";
 import { injectable } from "tsyringe";
-import { DupeRoleException } from "../../exceptions/DupeRoleException.js";
-import { NoRolesFoundException } from "../../exceptions/NoRolesFoundException.js";
 
 @injectable()
 export class LanguageFlagEngine extends AbstractFlagReactionEngine {
     public constructor(
         restCountriesManager: RestCountriesManager,
-        countryManager: CountryManager,
         botRoleManager: BotRoleManager,
         guildManager: GuildManager,
     ) {
-        super(botRoleManager, guildManager, restCountriesManager, countryManager);
+        super(botRoleManager, guildManager, restCountriesManager);
     }
 
     public get type(): InteractionType {
@@ -66,30 +62,10 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         return super.handleReactionRemove(flagEmoji, guildMember);
     }
 
-    public override async handleReactionAdd(guildMember: GuildMember, flagEmoji: string): Promise<void> {
-        const guildId = guildMember.guild.id;
-        const role = await this.createRoleFromFlag(flagEmoji, guildId);
-        if (!role) {
-            throw new NoRolesFoundException();
-        }
-        if (this.hasDupes(guildMember, role)) {
-            throw new DupeRoleException();
-        }
-        try {
-            await guildMember.roles.add(role);
-        } catch {
-            /* empty */
-        }
-    }
-
     public override async createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
         const role = await this.getRoleFromFlag(flagEmoji, guildId);
         if (!role) {
-            const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
-            if (!alpha2Code) {
-                return null;
-            }
-            const countryInfo = await this._restCountriesManager.getCountyLanguages(alpha2Code);
+            const countryInfo = await this._restCountriesManager.getCountyLanguages(flagEmoji);
             if (!countryInfo) {
                 return null;
             }
@@ -118,16 +94,14 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         return newRole;
     }
 
-    private hasDupes(member: GuildMember, roleToCheck: Role): boolean {
-        return ObjectUtil.isValidObject(member.roles.cache.find(role => role.name === roleToCheck.name));
+    protected override hasDuplicateRoles(member: GuildMember, roleToCheck: Role): Promise<boolean> {
+        return Promise.resolve(
+            ObjectUtil.isValidObject(member.roles.cache.find(role => role.name === roleToCheck.name)),
+        );
     }
 
     protected override async getRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
-        const alpha2Code = this._countryManager.getAlpha2Code(flagEmoji);
-        if (!alpha2Code) {
-            return null;
-        }
-        const countryInfo = await this._restCountriesManager.getCountyLanguages(alpha2Code!);
+        const countryInfo = await this._restCountriesManager.getCountyLanguages(flagEmoji!);
         if (!countryInfo) {
             return null;
         }

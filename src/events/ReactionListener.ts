@@ -94,7 +94,7 @@ export class ReactionListener extends BaseDAO {
         } catch (e) {
             if (e instanceof NoRolesFoundException || e instanceof DupeRoleException) {
                 try {
-                    await this._removeReaction(flagEmoji, guildMember, message);
+                    await this.removeReaction(flagEmoji, guildMember, message);
                 } catch {
                     /* empty */
                 }
@@ -104,7 +104,7 @@ export class ReactionListener extends BaseDAO {
         }
     }
 
-    private _removeReaction(
+    private removeReaction(
         flagEmoji: string,
         guildMember: GuildMember,
         message: Message | PartialMessage,

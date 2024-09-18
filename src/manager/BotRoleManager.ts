@@ -6,6 +6,7 @@ import { InteractionType } from "../model/enums/InteractionType.js";
 import { BaseDAO } from "../DAO/BaseDAO.js";
 import { LanguageModel } from "../model/DB/guild/Language.model.js";
 import { Repository } from "typeorm/repository/Repository.js";
+import { ModelTypeMapping } from "../model/typeings.js";
 
 @singleton()
 export class BotRoleManager extends BaseDAO {
@@ -13,27 +14,27 @@ export class BotRoleManager extends BaseDAO {
         super();
     }
 
-    public async getAllRolesFromDb(
+    public async getAllRolesFromDb<K extends InteractionType>(
         guildId: string,
-        type: InteractionType,
-    ): Promise<{ role: Role; dbRole: LanguageModel | FlagModel }[]> {
+        type: K,
+    ): Promise<{ role: Role; dbRole: ModelTypeMapping[K] }[]> {
         const guild = await this._guildManager.getGuild(guildId);
         const repo = this.getRepo(type);
-        const allRoles = await repo.find({
+        const allModels = await repo.find({
             where: {
                 guildId,
             },
         });
-        const retArr: { role: Role; dbRole: LanguageModel | FlagModel }[] = [];
-        for (const role of allRoles) {
-            const guildRole = guild.roles.cache.get(role.roleId);
+        const retArr: { role: Role; dbRole: ModelTypeMapping[K] }[] = [];
+        for (const model of allModels) {
+            const guildRole = guild.roles.cache.get(model.roleId);
             if (!guildRole) {
-                await this.removeRoleBinding(guildId, role.roleId, false);
+                await this.removeRoleBinding(guildId, model.roleId, false);
                 continue;
             }
             retArr.push({
                 role: guildRole,
-                dbRole: role,
+                dbRole: model as ModelTypeMapping[K],
             });
         }
         return retArr;
@@ -86,7 +87,7 @@ export class BotRoleManager extends BaseDAO {
         return [...fetchedRole.members.values()];
     }
 
-    private getRepo(type: InteractionType): Repository<LanguageModel | FlagModel> {
+    private getRepo<K extends InteractionType>(type: K): Repository<LanguageModel | FlagModel> {
         if (type === InteractionType.LANGUAGE) {
             return this.ds.getRepository(LanguageModel);
         }

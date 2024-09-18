@@ -15,6 +15,8 @@ export class RoleEvents extends BaseDAO {
         const { id, guild } = role;
         try {
             await this._botRoleManager.removeRoleBinding(guild.id, id, false);
-        } catch {}
+        } catch {
+            /* empty */
+        }
     }
 }

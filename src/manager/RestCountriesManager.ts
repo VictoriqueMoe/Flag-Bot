@@ -7,7 +7,6 @@ import { HexColorString } from "discord.js";
 import { BotRoleManager } from "./BotRoleManager.js";
 import { GuildManager } from "./GuildManager.js";
 import { InteractionType } from "../model/enums/InteractionType.js";
-import { FlagModel } from "../model/DB/guild/Flag.model.js";
 
 @singleton()
 export class RestCountriesManager {
@@ -34,7 +33,7 @@ export class RestCountriesManager {
         "TV",
         "VU",
     ];
-    private countryCodes: Map<string, Country> = new Map();
+    private countryFlagEmojiMap: Map<string, Country> = new Map();
     private colourCache: Map<string, HexColorString> = new Map();
 
     public constructor(
@@ -42,8 +41,8 @@ export class RestCountriesManager {
         private guildManager: GuildManager,
     ) {}
 
-    public async getCountyLanguages(cca2: string): Promise<CountryInfo | null> {
-        const countryInfo = this.countryCodes.get(cca2);
+    public async getCountyLanguages(emoji: string): Promise<CountryInfo | null> {
+        const countryInfo = this.countryFlagEmojiMap.get(emoji);
         if (!countryInfo) {
             return null;
         }
@@ -57,17 +56,18 @@ export class RestCountriesManager {
         }
         const primaryColour = await this.getAverageColour(countryInfo.flags.png);
         return {
+            flag: countryInfo.flag,
             languageInfo,
             primaryColour,
-            cca2,
+            cca2: countryInfo.cca2,
             name: countryInfo.name,
         };
     }
 
     @RunEvery(31, METHOD_EXECUTOR_TIME_UNIT.days, true)
     private async init(): Promise<void> {
-        this.countryCodes.clear();
-        const response = await fetch(`${RestCountriesManager.baseUrl}/all?fields=languages,cca2,flags,name`);
+        this.countryFlagEmojiMap.clear();
+        const response = await fetch(`${RestCountriesManager.baseUrl}/all?fields=languages,cca2,flags,name,flag`);
         if (!response.ok) {
             console.error(await response.text());
             throw new Error("unable to load language codes");
@@ -80,11 +80,10 @@ export class RestCountriesManager {
                     delete countryResponse.languages.eng;
                 }
             }
-            this.countryCodes.set(countryResponse.cca2, {
+            this.countryFlagEmojiMap.set(countryResponse.flag, {
                 ...countryResponse,
             });
         }
-        await this.updateRoleColours();
     }
 
     @RunEvery(365, METHOD_EXECUTOR_TIME_UNIT.days)
@@ -98,7 +97,7 @@ export class RestCountriesManager {
             const countryRoles = await this.botRoleManager.getAllRolesFromDb(guild.id, InteractionType.FLAG);
             for (const roleInfo of countryRoles) {
                 const { role, dbRole } = roleInfo;
-                const cca2 = (dbRole as FlagModel).alpha2Code;
+                const cca2 = dbRole.alpha2Code;
                 const countryInfo = await this.getCountyLanguages(cca2);
                 if (countryInfo) {
                     const roleColor = countryInfo.primaryColour;
