@@ -9,9 +9,9 @@ import { NoRolesFoundException } from "../../exceptions/NoRolesFoundException.js
 
 export abstract class AbstractFlagReactionEngine implements IFlagEngine {
     protected constructor(
-        protected _botRoleManager: BotRoleManager,
-        protected _guildManager: GuildManager,
-        protected _restCountriesManager: RestCountriesManager,
+        protected botRoleManager: BotRoleManager,
+        protected guildManager: GuildManager,
+        protected restCountriesManager: RestCountriesManager,
     ) {}
 
     public async handleReactionRemove(flagEmoji: string, guildMember: GuildMember): Promise<void> {
@@ -19,9 +19,9 @@ export abstract class AbstractFlagReactionEngine implements IFlagEngine {
         if (!role) {
             return;
         }
-        const usersWithRole = await this._botRoleManager.getUsersWithRole(guildMember.guild.id, role.id);
+        const usersWithRole = await this.botRoleManager.getUsersWithRole(guildMember.guild.id, role.id);
         if (usersWithRole.length === 0) {
-            await this._botRoleManager.removeRoleBinding(guildMember.guild.id, role.id);
+            await this.botRoleManager.removeRoleBinding(guildMember.guild.id, role.id);
         }
     }
 
@@ -62,8 +62,8 @@ export abstract class AbstractFlagReactionEngine implements IFlagEngine {
     }
 
     public abstract get type(): InteractionType;
-
     public abstract getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>>;
+    public abstract getCca2FromRole(guildId: string, roleId: string): Promise<string | null>;
 
     protected abstract createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null>;
 

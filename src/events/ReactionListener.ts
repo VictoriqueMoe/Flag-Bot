@@ -1,20 +1,19 @@
 import { type ArgsOf, Discord, On } from "discordx";
 import { injectable } from "tsyringe";
-import { ObjectUtil } from "../utils/Utils.js";
-import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";
 import { GuildMember, Message, MessageReaction, PartialMessage, PartialMessageReaction } from "discord.js";
-import { BaseDAO } from "../DAO/BaseDAO.js";
 import { InteractionType } from "../model/enums/InteractionType.js";
 import { FlagManager } from "../manager/FlagManager.js";
 import { NoRolesFoundException } from "../exceptions/NoRolesFoundException.js";
 import { DupeRoleException } from "../exceptions/DupeRoleException.js";
+import { InteractionRepo } from "../db/repo/InteractionRepo.js";
 
 @Discord()
 @injectable()
-export class ReactionListener extends BaseDAO {
-    public constructor(private _flagManager: FlagManager) {
-        super();
-    }
+export class ReactionListener {
+    public constructor(
+        private flagManager: FlagManager,
+        private interactionRepo: InteractionRepo,
+    ) {}
 
     @On()
     private async messageReactionRemove([reaction, user]: ArgsOf<"messageReactionRemove">): Promise<void> {
@@ -38,7 +37,7 @@ export class ReactionListener extends BaseDAO {
         if (type === null || !flagEmoji) {
             return;
         }
-        const engine = this._flagManager.getEngineFromType(type);
+        const engine = this.flagManager.getEngineFromType(type);
         if (!engine) {
             return;
         }
@@ -49,13 +48,7 @@ export class ReactionListener extends BaseDAO {
         reaction: MessageReaction | PartialMessageReaction,
     ): Promise<InteractionType | null> {
         const { message } = reaction;
-        const interactionModel = this.ds.getRepository(InteractionFlagModel);
-        const modelFromDb = await interactionModel.findOne({
-            where: {
-                guildId: message.guildId!,
-                messageId: message.id,
-            },
-        });
+        const modelFromDb = await this.interactionRepo.getInteraction(message.guildId!, message.id);
         if (!modelFromDb) {
             return null;
         }
@@ -71,7 +64,7 @@ export class ReactionListener extends BaseDAO {
         const messageOgPoser = message.member;
         const emoji = reaction.emoji;
         const flagEmoji = emoji.name;
-        if (!ObjectUtil.validString(flagEmoji)) {
+        if (!flagEmoji) {
             return;
         }
         const guildMember = await message?.guild?.members.fetch({
@@ -83,9 +76,10 @@ export class ReactionListener extends BaseDAO {
         }
         const type = await this.getTypeFromReaction(reaction);
         if (type === null) {
+            await this.removeReaction(flagEmoji, guildMember, message);
             return;
         }
-        const engine = this._flagManager.getEngineFromType(type);
+        const engine = this.flagManager.getEngineFromType(type);
         if (!engine || !flagEmoji) {
             return;
         }

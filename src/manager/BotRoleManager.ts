@@ -83,10 +83,7 @@ export class BotRoleManager {
         if (!role) {
             return [];
         }
-        const fetchedRole = await guild.roles.fetch(role.id, {
-            force: true,
-            cache: true,
-        });
+        const fetchedRole = await guild.roles.fetch(role.id);
         if (!fetchedRole) {
             return [];
         }

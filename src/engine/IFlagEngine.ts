@@ -40,4 +40,6 @@ export interface IFlagEngine {
      * @returns {Promise<Map<Role, GuildMember[]>>}
      */
     getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>>;
+
+    getCca2FromRole(guildId: string, roleId: string): Promise<string | null>;
 }

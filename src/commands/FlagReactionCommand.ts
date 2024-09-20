@@ -1,53 +1,63 @@
 import { type ArgsOf, Discord, On, Slash, SlashChoice, SlashOption } from "discordx";
 import { ApplicationCommandOptionType, CommandInteraction, PermissionsBitField } from "discord.js";
 import { injectable } from "tsyringe";
-import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";
 import { ObjectUtil, replyOrFollowUp } from "../utils/Utils.js";
-import { BaseDAO } from "../DAO/BaseDAO.js";
 import { InteractionType } from "../model/enums/InteractionType.js";
-import { Repository } from "typeorm/repository/Repository.js";
 import { FlagManager } from "../manager/FlagManager.js";
+import { InteractionRepo } from "../db/repo/InteractionRepo.js";
+import { Builder } from "builder-pattern";
+import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";
 
 @Discord()
 @injectable()
-export class FlagReactionCommand extends BaseDAO {
-    public constructor(private _flagManager: FlagManager) {
-        super();
-    }
+export class FlagReactionCommand {
+    public constructor(
+        private flagManager: FlagManager,
+        private interactionRepo: InteractionRepo,
+    ) {}
 
     @On()
     private async messageDelete([message]: ArgsOf<"messageDelete">): Promise<void> {
         const messageId = message.id;
-        const repo = this.ds.getRepository(InteractionFlagModel);
         if (message.author?.id !== message?.guild?.members?.me?.id) {
             return;
         }
         const guildId = message.guildId;
         if (guildId) {
+            const reactionEmoji = message.reactions.cache;
+            for (const [, reaction] of reactionEmoji) {
+                const emoji = reaction.emoji;
+                if (emoji.name) {
+                    const interaction = await this.interactionRepo.getInteraction(guildId, messageId);
+                    if (interaction) {
+                        const type = interaction.type;
+                        const engine = this.flagManager.getEngineFromType(type);
+                        if (engine) {
+                            const members = reaction.users.cache.values();
+                            for (const member of members) {
+                                const guildMember = message.guild?.members.resolve(member.id);
+                                if (guildMember) {
+                                    await engine.handleReactionRemove(emoji.name, guildMember, reaction);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             try {
-                await repo.delete({
-                    messageId,
-                    guildId,
-                });
+                await this.interactionRepo.deleteInteraction(guildId, messageId);
             } catch {
                 /* empty */
             }
         }
     }
 
-    private async checkNoDupeMessages(
-        repo: Repository<InteractionFlagModel>,
-        type: InteractionType,
-        interaction: CommandInteraction,
-    ): Promise<boolean> {
+    private async checkNoDupeMessages(type: InteractionType, interaction: CommandInteraction): Promise<boolean> {
         if (!interaction.guildId) {
             return false;
         }
-        const count = await repo.countBy({
-            guildId: interaction.guildId,
-            type: type,
-        });
-        if (count !== 0) {
+        const exists = await this.interactionRepo.interactionExists(interaction.guildId, type);
+        if (exists) {
             setTimeout(() => {
                 interaction.deleteReply();
             }, 4000);
@@ -74,8 +84,7 @@ export class FlagReactionCommand extends BaseDAO {
         interaction: CommandInteraction,
     ): Promise<void> {
         await interaction.deferReply();
-        const repo = this.ds.getRepository(InteractionFlagModel);
-        const hasDupe = await this.checkNoDupeMessages(repo, InteractionType.LANGUAGE, interaction);
+        const hasDupe = await this.checkNoDupeMessages(InteractionType.LANGUAGE, interaction);
         if (hasDupe) {
             return;
         }
@@ -95,12 +104,13 @@ export class FlagReactionCommand extends BaseDAO {
             return replyOrFollowUp(interaction, "I am not allowed to post/see messages in this channel");
         }
         try {
-            await repo.insert({
+            const newInteraction = Builder(InteractionFlagModel, {
                 guildId: interaction.guildId!,
                 messageId: messageReply.id,
                 channelId: messageReply.channelId,
                 type: InteractionType.LANGUAGE,
-            });
+            }).build();
+            await this.interactionRepo.saveInteraction(newInteraction);
         } catch (e) {
             console.error(e);
             return replyOrFollowUp(interaction, "unknown error occurred");
@@ -108,8 +118,8 @@ export class FlagReactionCommand extends BaseDAO {
     }
 
     @Slash({
-        description: "set the initial flag reaction message",
-        name: "flag_react",
+        description: "set the initial residence reaction message",
+        name: "residence_react",
         defaultMemberPermissions: PermissionsBitField.Flags.Administrator,
     })
     private async flagReact(
@@ -123,8 +133,7 @@ export class FlagReactionCommand extends BaseDAO {
         interaction: CommandInteraction,
     ): Promise<void> {
         await interaction.deferReply();
-        const repo = this.ds.getRepository(InteractionFlagModel);
-        const hasDupe = await this.checkNoDupeMessages(repo, InteractionType.FLAG, interaction);
+        const hasDupe = await this.checkNoDupeMessages(InteractionType.FLAG, interaction);
         if (hasDupe) {
             return;
         }
@@ -145,12 +154,13 @@ export class FlagReactionCommand extends BaseDAO {
         }
 
         try {
-            await repo.insert({
+            const newInteraction = Builder(InteractionFlagModel, {
                 guildId: interaction.guildId!,
                 messageId: messageReply.id,
                 channelId: messageReply.channelId,
                 type: InteractionType.FLAG,
-            });
+            }).build();
+            await this.interactionRepo.saveInteraction(newInteraction);
         } catch {
             return replyOrFollowUp(interaction, "unknown error occurred");
         }
@@ -166,7 +176,7 @@ export class FlagReactionCommand extends BaseDAO {
         @SlashChoice({ name: "countries", value: InteractionType.FLAG })
         @SlashOption({
             name: "type",
-            description: "WHat type do you wish to generate a report for",
+            description: "What type do you wish to generate a report for",
             required: true,
             type: ApplicationCommandOptionType.Number,
         })
@@ -176,7 +186,7 @@ export class FlagReactionCommand extends BaseDAO {
         await interaction.deferReply({
             ephemeral: true,
         });
-        const engine = this._flagManager.getEngineFromType(type);
+        const engine = this.flagManager.getEngineFromType(type);
         if (!engine) {
             return;
         }
@@ -191,7 +201,7 @@ export class FlagReactionCommand extends BaseDAO {
             return replyOrFollowUp(interaction, "No data to generate");
         }
         const buf = Buffer.from(csvStr, "utf8");
-        interaction.editReply({
+        await interaction.editReply({
             content: "Report generated",
             files: [
                 {

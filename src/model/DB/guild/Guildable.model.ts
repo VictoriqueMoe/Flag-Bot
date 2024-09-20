@@ -4,6 +4,7 @@ import { IGuildAware } from "../IGuildAware.js";
 import type { InteractionFlagModel } from "./InteractionFlag.model.js";
 import type { LanguageModel } from "./Language.model";
 import type { NationalityModel } from "./Nationality.model.js";
+import { SettingsModel } from "./Settings.model.js";
 
 @Entity()
 export class GuildableModel implements IGuildAware {
@@ -14,6 +15,9 @@ export class GuildableModel implements IGuildAware {
 
     @OneToMany("FlagModel", "guildableModel")
     public flagModel: FlagModel[];
+
+    @OneToMany("SettingsModel", "guildableModel")
+    public settings: SettingsModel[];
 
     @OneToMany("NationalityModel", "guildableModel")
     public nationalityModel: NationalityModel[];

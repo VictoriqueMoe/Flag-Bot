@@ -1,21 +1,21 @@
-import { BaseDAO } from "../DAO/BaseDAO.js";
 import { singleton } from "tsyringe";
 import { Client } from "discordx";
 import { Guild } from "discord.js";
-import { GuildableModel } from "../model/DB/guild/Guildable.model.js";
+import { GuildRepo } from "../db/repo/GuildRepo.js";
 
 @singleton()
-export class GuildManager extends BaseDAO {
-    public constructor(private _client: Client) {
-        super();
-    }
+export class GuildManager {
+    public constructor(
+        private client: Client,
+        private guildRepo: GuildRepo,
+    ) {}
 
     public async getGuilds(): Promise<Guild[]> {
-        const models = await this.ds.getRepository(GuildableModel).find();
-        return Promise.all(models.map(model => this._client.guilds.fetch(model.guildId)));
+        const models = await this.guildRepo.getAllGuilds();
+        return Promise.all(models.map(model => this.client.guilds.fetch(model.guildId)));
     }
 
     public getGuild(guildId: string): Promise<Guild> {
-        return this._client.guilds.fetch(guildId);
+        return this.client.guilds.fetch(guildId);
     }
 }

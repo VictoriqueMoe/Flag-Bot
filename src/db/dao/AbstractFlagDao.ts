@@ -21,4 +21,20 @@ export abstract class AbstractFlagDao<T extends AbstractFlagModel> extends Abstr
         const result = await this.getRepository(transaction).delete({ guildId, roleId } as FindOptionsWhere<T>);
         return result.affected === 1;
     }
+
+    public getEntryFromAlpha2Code(guildId: string, alpha2Code: string, transaction?: EntityManager): Promise<T | null> {
+        return this.getRepository(transaction).findOne({
+            where: {
+                alpha2Code,
+                guildId,
+            } as FindOptionsWhere<T>,
+        });
+    }
+
+    public getEntryFromRole(guildId: string, roleId: string, transaction?: EntityManager): Promise<T | null> {
+        return this.getRepository(transaction).findOneBy({
+            guildId,
+            roleId,
+        } as FindOptionsWhere<T>);
+    }
 }

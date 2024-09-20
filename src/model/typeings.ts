@@ -3,6 +3,7 @@ import { InteractionType } from "./enums/InteractionType.js";
 import { FlagModel } from "./DB/guild/Flag.model.js";
 import { LanguageModel } from "./DB/guild/Language.model.js";
 import { NationalityModel } from "./DB/guild/Nationality.model.js";
+import SETTING from "./enums/Settings.js";
 
 export type Country = {
     languages: Languages;
@@ -59,3 +60,5 @@ export type ModelTypeMapping = {
     [InteractionType.LANGUAGE]: LanguageModel;
     [InteractionType.NATIONALITY]: NationalityModel;
 };
+
+export type SettingsMap = Map<SETTING, string>;

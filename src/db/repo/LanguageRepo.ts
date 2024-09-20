@@ -10,6 +10,6 @@ export class LanguageRepo extends AbstractFlagRepo<LanguageModel, LanguageDao> {
     }
 
     public getLanguageByGuildId(languageCode: string, guildId: string): Promise<LanguageModel | null> {
-        return this.languageDao.getLanguageByGuildId(guildId, guildId);
+        return this.languageDao.getLanguageByGuildId(languageCode, guildId);
     }
 }
