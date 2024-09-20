@@ -1,22 +1,34 @@
 import { IFlagEngine } from "../IFlagEngine.js";
-import { Collection, GuildMember, Role } from "discord.js";
+import { Collection, Guild, GuildMember, Role } from "discord.js";
 import { InteractionType } from "../../model/enums/InteractionType.js";
 import { BotRoleManager } from "../../manager/BotRoleManager.js";
 import { GuildManager } from "../../manager/GuildManager.js";
 import { RestCountriesManager } from "../../manager/RestCountriesManager.js";
 import { DupeRoleException } from "../../exceptions/DupeRoleException.js";
 import { NoRolesFoundException } from "../../exceptions/NoRolesFoundException.js";
+import { CountryInfo } from "../../model/typeings.js";
+import { SettingsManager } from "../../manager/SettingsManager.js";
+import { AbstractFlagRepo } from "../../db/repo/AbstractFlagRepo.js";
+import { AbstractFlagModel } from "../../model/DB/guild/AbstractFlagModel.js";
 
-export abstract class AbstractFlagReactionEngine implements IFlagEngine {
+export abstract class AbstractFlagReactionEngine<T extends AbstractFlagModel> implements IFlagEngine {
     protected constructor(
         protected botRoleManager: BotRoleManager,
         protected guildManager: GuildManager,
         protected restCountriesManager: RestCountriesManager,
+        protected settingsManager: SettingsManager,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        private repo: AbstractFlagRepo<T, any>,
     ) {}
 
     public async handleReactionRemove(flagEmoji: string, guildMember: GuildMember): Promise<void> {
         const role = await this.getRoleFromFlag(flagEmoji, guildMember.guild.id);
         if (!role) {
+            return;
+        }
+        try {
+            await guildMember.roles.remove(role);
+        } catch {
             return;
         }
         const usersWithRole = await this.botRoleManager.getUsersWithRole(guildMember.guild.id, role.id);
@@ -25,7 +37,7 @@ export abstract class AbstractFlagReactionEngine implements IFlagEngine {
         }
     }
 
-    protected buildReport<T extends { roleId: string }>(
+    private buildReport<T extends { roleId: string }>(
         guildRoles: Collection<string, Role>,
         roleModels: T[],
     ): Map<Role, GuildMember[]> {
@@ -61,13 +73,53 @@ export abstract class AbstractFlagReactionEngine implements IFlagEngine {
         }
     }
 
+    private async createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
+        const role = await this.getRoleFromFlag(flagEmoji, guildId);
+        if (role) {
+            // role already exists
+            return role;
+        }
+        const guild = await this.guildManager.getGuild(guildId);
+        const countryInfo = await this.restCountriesManager.getCountyLanguages(flagEmoji);
+        if (!countryInfo) {
+            return null;
+        }
+
+        const [newModel, newRole] = await this.getRoleAndModel(countryInfo, guild);
+        await this.repo.createEntry(newModel);
+        return newRole;
+    }
+
+    public async getCca2FromRole(guildId: string, roleId: string): Promise<string | null> {
+        return (await this.repo.getEntryFromRole(guildId, roleId))?.alpha2Code ?? null;
+    }
+
+    public async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
+        const guild = await this.guildManager.getGuild(guildId);
+        const guildRoles = guild.roles.cache;
+        const allRoles = await this.repo.getAllEntries(guildId);
+        return this.buildReport(guildRoles, allRoles);
+    }
+
+    protected async getRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
+        const countryInfo = await this.restCountriesManager.getCountyLanguages(flagEmoji);
+        const alpha2Code = countryInfo?.cca2;
+        if (!alpha2Code) {
+            return null;
+        }
+
+        const fromDb = await this.repo.getEntryFromAlpha2Code(guildId, alpha2Code);
+        if (!fromDb) {
+            return null;
+        }
+        const guild = await this.guildManager.getGuild(guildId);
+        const { roleId } = fromDb;
+        return guild.roles.fetch(roleId);
+    }
+
     public abstract get type(): InteractionType;
-    public abstract getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>>;
-    public abstract getCca2FromRole(guildId: string, roleId: string): Promise<string | null>;
-
-    protected abstract createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null>;
-
-    protected abstract getRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null>;
 
     protected abstract hasDuplicateRoles(member: GuildMember, roleToCheck: Role): Promise<boolean>;
+
+    protected abstract getRoleAndModel(countryInfo: CountryInfo, guild: Guild): Promise<[T, Role]>;
 }

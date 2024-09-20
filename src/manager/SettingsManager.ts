@@ -53,9 +53,13 @@ export class SettingsManager {
         for (const guild of allGuilds) {
             const guildId = guild.id;
             const hasRoleAutoColour = await this.hasSetting(guildId, SETTING.AUTO_ROLE_COLOUR);
+            const hasRolePrefix = await this.hasSetting(guildId, SETTING.ROLE_PREFIX);
             const updateSettingMap: SettingsMap = new Map();
             if (!hasRoleAutoColour) {
                 updateSettingMap.set(SETTING.AUTO_ROLE_COLOUR, "true");
+            }
+            if (!hasRolePrefix) {
+                updateSettingMap.set(SETTING.ROLE_PREFIX, "true");
             }
             if (updateSettingMap.size !== 0) {
                 await this.saveOrUpdateSettings(guildId, updateSettingMap);

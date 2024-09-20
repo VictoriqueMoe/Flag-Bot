@@ -11,6 +11,16 @@ export type Country = {
     flags: Flags;
     name: Name;
     flag: string;
+    demonyms: Demonyms;
+};
+
+export type Demonyms = {
+    [type: string]: Gender;
+};
+
+export type Gender = {
+    f: string;
+    m: string;
 };
 
 export type Languages = {
@@ -28,6 +38,7 @@ export type CountryInfo = {
     name: Name;
     cca2: string;
     flag: string;
+    demonym?: string;
 };
 
 export type Name = {

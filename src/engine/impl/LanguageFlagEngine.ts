@@ -14,15 +14,15 @@ import { SettingsManager } from "../../manager/SettingsManager.js";
 import SETTING from "../../model/enums/Settings.js";
 
 @injectable()
-export class LanguageFlagEngine extends AbstractFlagReactionEngine {
+export class LanguageFlagEngine extends AbstractFlagReactionEngine<LanguageModel> {
     public constructor(
         restCountriesManager: RestCountriesManager,
         botRoleManager: BotRoleManager,
         guildManager: GuildManager,
         private languageRepo: LanguageRepo,
-        private settingsManager: SettingsManager,
+        settingsManager: SettingsManager,
     ) {
-        super(botRoleManager, guildManager, restCountriesManager);
+        super(botRoleManager, guildManager, restCountriesManager, settingsManager, languageRepo);
     }
 
     public get type(): InteractionType {
@@ -38,55 +38,37 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         if (!role) {
             return;
         }
-        try {
-            const roleName = role.name;
-            const reactedMessage = reaction!.message;
-            const reactionEmoji = reactedMessage.reactions.cache;
-            let hasOtherLang = false;
-            for (const [, otherReaction] of reactionEmoji) {
-                const users = await otherReaction.users.fetch();
-                if (!users.has(guildMember.id)) {
-                    continue;
-                }
-                const reactionName = otherReaction.emoji.name;
-                if (!reactionName) {
-                    continue;
-                }
-                const roleFromEmoji = await this.getRoleFromFlag(reactionName, guildMember.guild.id);
-                if (roleFromEmoji && roleFromEmoji.name === roleName) {
-                    hasOtherLang = true;
-                    break;
-                }
+        const roleName = role.name;
+        const reactedMessage = reaction!.message;
+        const reactionEmoji = reactedMessage.reactions.cache;
+        let hasOtherLang = false;
+        for (const [, otherReaction] of reactionEmoji) {
+            const users = await otherReaction.users.fetch();
+            if (!users.has(guildMember.id)) {
+                continue;
             }
-            if (!hasOtherLang) {
-                await guildMember.roles.remove(role);
+            const reactionName = otherReaction.emoji.name;
+            if (!reactionName) {
+                continue;
             }
-        } catch {
-            return;
+            const roleFromEmoji = await this.getRoleFromFlag(reactionName, guildMember.guild.id);
+            if (roleFromEmoji && roleFromEmoji.name === roleName) {
+                hasOtherLang = true;
+                break;
+            }
+        }
+        if (!hasOtherLang) {
+            await guildMember.roles.remove(role);
         }
         return super.handleReactionRemove(flagEmoji, guildMember);
     }
 
-    public override async createRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
-        const role = await this.getRoleFromFlag(flagEmoji, guildId);
-        if (!role) {
-            const countryInfo = await this.restCountriesManager.getCountyLanguages(flagEmoji);
-            if (!countryInfo) {
-                return null;
-            }
-            const guild = await this.guildManager.getGuild(guildId);
-            return this.create(countryInfo, guild);
-        }
-        return role;
-    }
-
-    private async create(countryInfo: CountryInfo, guild: Guild): Promise<Role> {
+    protected override async getRoleAndModel(countryInfo: CountryInfo, guild: Guild): Promise<[LanguageModel, Role]> {
         const lang = countryInfo.languageInfo[0];
-        const botName = guild.members.me?.displayName ?? "FlagBot";
+        const botName = guild.members.me?.displayName ?? "flagBot";
         const shouldSetColour = await this.settingsManager.getSetting(guild.id, SETTING.AUTO_ROLE_COLOUR);
-
         const newRole = await guild.roles.create({
-            name: lang.name,
+            name: `${await this.getRolePrefix(guild)} ${lang.name}`,
             reason: `Created via ${botName}`,
             color: shouldSetColour === "true" ? countryInfo.primaryColour : undefined,
         });
@@ -95,10 +77,14 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
             guildId: guild.id,
             languageCode: lang.code,
             alpha2Code: countryInfo.cca2,
-        });
+        }).build();
 
-        await this.languageRepo.createEntry(newModel.build());
-        return newRole;
+        return [newModel, newRole];
+    }
+
+    private async getRolePrefix(guild: Guild): Promise<string> {
+        const shouldUsePrefix = (await this.settingsManager.getSetting(guild.id, SETTING.ROLE_PREFIX)) === "true";
+        return shouldUsePrefix ? "I speak:" : "";
     }
 
     protected override hasDuplicateRoles(member: GuildMember, roleToCheck: Role): Promise<boolean> {
@@ -108,7 +94,7 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
     }
 
     protected override async getRoleFromFlag(flagEmoji: string, guildId: string): Promise<Role | null> {
-        const countryInfo = await this.restCountriesManager.getCountyLanguages(flagEmoji!);
+        const countryInfo = await this.restCountriesManager.getCountyLanguages(flagEmoji);
         if (!countryInfo) {
             return null;
         }
@@ -121,16 +107,5 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine {
         const guild = await this.guildManager.getGuild(guildId);
         const { roleId } = fromDb;
         return guild.roles.fetch(roleId);
-    }
-
-    public override async getReportMap(guildId: string): Promise<Map<Role, GuildMember[]>> {
-        const guild = await this.guildManager.getGuild(guildId);
-        const guildRoles = guild.roles.cache;
-        const allLanguages = await this.languageRepo.getAllEntries(guildId);
-        return super.buildReport(guildRoles, allLanguages);
-    }
-
-    public async getCca2FromRole(guildId: string, roleId: string): Promise<string | null> {
-        return (await this.languageRepo.getEntryFromRole(guildId, roleId))?.alpha2Code ?? null;
     }
 }

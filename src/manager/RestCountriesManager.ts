@@ -55,19 +55,23 @@ export class RestCountriesManager {
             });
         }
         const primaryColour = await this.getAverageColour(countryInfo.flags.png);
+        const demonym = countryInfo?.demonyms?.["eng"]?.m ?? undefined;
         return {
             flag: countryInfo.flag,
             languageInfo,
             primaryColour,
             cca2: countryInfo.cca2,
             name: countryInfo.name,
+            demonym,
         };
     }
 
     @RunEvery(31, METHOD_EXECUTOR_TIME_UNIT.days, true)
     private async init(): Promise<void> {
         this.countryFlagEmojiMap.clear();
-        const response = await fetch(`${RestCountriesManager.baseUrl}/all?fields=languages,cca2,flags,name,flag`);
+        const response = await fetch(
+            `${RestCountriesManager.baseUrl}/all?fields=languages,cca2,flags,name,flag,demonyms`,
+        );
         if (!response.ok) {
             console.error(await response.text());
             throw new Error("unable to load language codes");

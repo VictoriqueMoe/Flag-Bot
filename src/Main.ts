@@ -23,6 +23,7 @@ export class Main {
                 IntentsBitField.Flags.GuildMessageReactions,
                 IntentsBitField.Flags.GuildPresences,
                 IntentsBitField.Flags.GuildMembers,
+                IntentsBitField.Flags.GuildMessages,
             ],
             silent: false,
         };
@@ -30,7 +31,7 @@ export class Main {
         const client = new Client(clientOps);
         registerInstance(connectedDs, client);
         await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`);
-        await client.login(process.env.TEST_TOKEN as string);
+        await client.login(process.env.TEST as string);
     }
 }
 
