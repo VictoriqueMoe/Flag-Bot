@@ -31,7 +31,7 @@ export class Main {
         const client = new Client(clientOps);
         registerInstance(connectedDs, client);
         await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`);
-        await client.login(process.env.TEST as string);
+        await client.login(process.env.TOKEN as string);
     }
 }
 
