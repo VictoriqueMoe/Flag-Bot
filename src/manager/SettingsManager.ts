@@ -48,7 +48,7 @@ export class SettingsManager {
     }
 
     @PostConstruct
-    private async initDefaults(): Promise<void> {
+    public async initDefaults(): Promise<void> {
         const allGuilds = await this.guildManager.getGuilds();
         for (const guild of allGuilds) {
             const guildId = guild.id;

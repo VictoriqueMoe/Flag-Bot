@@ -117,7 +117,10 @@ export class RestCountriesManager {
         }
         const colourInfo = await getAverageColor(url, {
             algorithm: "dominant",
-            ignoredColor: [255, 255, 255, 255],
+            ignoredColor: [
+                [255, 255, 255, 255],
+                [0, 0, 0, 0],
+            ],
         });
         const hex = colourInfo.hex as HexColorString;
         this.colourCache.set(url, hex);

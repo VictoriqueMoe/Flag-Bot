@@ -5,6 +5,7 @@ import { replyOrFollowUp } from "../utils/Utils.js";
 import { ActivityType, InteractionType } from "discord-api-types/v10";
 import { GuildRepo } from "../db/repo/GuildRepo.js";
 import { InteractionRepo } from "../db/repo/InteractionRepo.js";
+import { SettingsManager } from "../manager/SettingsManager.js";
 
 @Discord()
 @injectable()
@@ -13,10 +14,12 @@ export class OnReady {
         private _client: Client,
         private guildRepo: GuildRepo,
         private interactionRepo: InteractionRepo,
+        private settingsManager: SettingsManager,
     ) {}
 
     public async init(): Promise<void> {
         await this.cleanUpGuilds();
+        await this.settingsManager.initDefaults();
     }
 
     @On()
