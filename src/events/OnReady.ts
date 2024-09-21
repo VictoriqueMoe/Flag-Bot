@@ -1,22 +1,19 @@
-import { BaseDAO } from "../DAO/BaseDAO.js";
 import { type ArgsOf, Client, Discord, DIService, On, RestArgsOf } from "discordx";
 import { ChannelType } from "discord.js";
 import { injectable } from "tsyringe";
-import { DbUtils, replyOrFollowUp } from "../utils/Utils.js";
-import { GuildableModel } from "../model/DB/guild/Guildable.model.js";
+import { replyOrFollowUp } from "../utils/Utils.js";
 import { ActivityType, InteractionType } from "discord-api-types/v10";
-import { InteractionFlagModel } from "../model/DB/guild/InteractionFlag.model.js";
-import { RestCountriesManager } from "../manager/RestCountriesManager.js";
+import { GuildRepo } from "../db/repo/GuildRepo.js";
+import { InteractionRepo } from "../db/repo/InteractionRepo.js";
 
 @Discord()
 @injectable()
-export class OnReady extends BaseDAO {
+export class OnReady {
     public constructor(
         private _client: Client,
-        private restCountriesManager: RestCountriesManager,
-    ) {
-        super();
-    }
+        private guildRepo: GuildRepo,
+        private interactionRepo: InteractionRepo,
+    ) {}
 
     public async init(): Promise<void> {
         await this.cleanUpGuilds();
@@ -75,22 +72,7 @@ export class OnReady extends BaseDAO {
 
     private populateGuilds(): Promise<void> {
         const guilds = this._client.guilds.cache;
-        return this.ds.transaction(async transactionManager => {
-            for (const [guildId] of guilds) {
-                if (
-                    (await transactionManager.count(GuildableModel, {
-                        where: {
-                            guildId,
-                        },
-                    })) === 0
-                ) {
-                    const guild = DbUtils.build(GuildableModel, {
-                        guildId,
-                    });
-                    await transactionManager.save(GuildableModel, guild);
-                }
-            }
-        });
+        return this.guildRepo.populateGuilds(guilds);
     }
 
     private initDi(): void {
@@ -102,34 +84,24 @@ export class OnReady extends BaseDAO {
     }
 
     private async cleanUpGuilds(): Promise<void> {
-        const transactionManager = this.ds.manager;
         const guildsJoined = [...this._client.guilds.cache.keys()];
         if (guildsJoined.length === 0) {
-            await transactionManager.clear(GuildableModel);
-            await this.ds?.queryResultCache?.clear();
+            await this.interactionRepo.truncate();
+            await this.interactionRepo.clearQueryResultCache();
             return;
         }
-        for (const guildsJoinedId of guildsJoined) {
-            const guildModels = await transactionManager.find(GuildableModel, {
-                where: {
-                    guildId: guildsJoinedId,
-                },
-            });
-            if (!guildModels) {
-                await transactionManager.delete(GuildableModel, {
-                    guildId: guildsJoinedId,
-                });
-            }
+
+        const guildsInDb = await this.guildRepo.getAllGuilds();
+        const guildsToRemove = guildsInDb.filter(guild => !guildsJoined.includes(guild.guildId));
+        for (const guildToRemove of guildsToRemove) {
+            await this.guildRepo.removeGuild(guildToRemove.guildId);
         }
     }
 
     private async loadMessages(): Promise<void> {
-        const repo = this.ds.getRepository(InteractionFlagModel);
         const allGuilds = this._client.guilds.cache;
         for (const [id, guild] of allGuilds) {
-            const messagePost = await repo.findBy({
-                guildId: id,
-            });
+            const messagePost = await this.interactionRepo.getAllInteractions(id);
             if (messagePost.length === 0) {
                 continue;
             }
@@ -146,9 +118,7 @@ export class OnReady extends BaseDAO {
                     });
                     console.log(`Message found: ${message}`);
                 } catch {
-                    await repo.delete({
-                        guildId: id,
-                    });
+                    await this.interactionRepo.deleteAllInteractions(id);
                 }
             }
         }

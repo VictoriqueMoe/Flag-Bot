@@ -35,6 +35,7 @@ export default tseslint.config(
             semi: "error",
             camelcase: "off",
             // TypeScript
+            "@typescript-eslint/ban-ts-comment": "off",
             "@typescript-eslint/explicit-function-return-type": "error",
             "@typescript-eslint/no-unused-vars": "error",
             "@typescript-eslint/no-loss-of-precision": "error",
