@@ -110,7 +110,8 @@ export class FlagReactionCommand {
                 defaultMessage = "Please react with the flag of your country to get the role of your nationality!";
                 break;
             case InteractionType.FLAG:
-                defaultMessage = "Please react with the flag of your country to get the role of your nationality!";
+                defaultMessage =
+                    "Please react with the flag of your country to get the role of the country you live in!";
                 break;
         }
 

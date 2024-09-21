@@ -68,7 +68,7 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine<LanguageModel
         const botName = guild.members.me?.displayName ?? "flagBot";
         const shouldSetColour = await this.settingsManager.getSetting(guild.id, SETTING.AUTO_ROLE_COLOUR);
         const newRole = await guild.roles.create({
-            name: `${await this.getRolePrefix(guild)} ${lang.name}`,
+            name: `${await this.getRolePrefix(guild)}${lang.name}`,
             reason: `Created via ${botName}`,
             color: shouldSetColour === "true" ? countryInfo.primaryColour : undefined,
         });
@@ -84,7 +84,7 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine<LanguageModel
 
     private async getRolePrefix(guild: Guild): Promise<string> {
         const shouldUsePrefix = (await this.settingsManager.getSetting(guild.id, SETTING.ROLE_PREFIX)) === "true";
-        return shouldUsePrefix ? "I speak:" : "";
+        return shouldUsePrefix ? "I speak: " : "";
     }
 
     protected override hasDuplicateRoles(member: GuildMember, roleToCheck: Role): Promise<boolean> {

@@ -32,7 +32,7 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine<FlagModel> {
         const botName = guild.members.me?.displayName ?? "flagBot";
         const shouldSetColour = await this.settingsManager.getSetting(guild.id, SETTING.AUTO_ROLE_COLOUR);
         const newRole = await guild.roles.create({
-            name: `${await this.getRolePrefix(guild)} ${countryInfo.name.common}`,
+            name: `${await this.getRolePrefix(guild)}${countryInfo.name.common}`,
             reason: `Created via ${botName}`,
             color: shouldSetColour === "true" ? countryInfo.primaryColour : undefined,
         });
@@ -47,7 +47,7 @@ export class CountryFlagEngine extends AbstractFlagReactionEngine<FlagModel> {
 
     private async getRolePrefix(guild: Guild): Promise<string> {
         const shouldUsePrefix = (await this.settingsManager.getSetting(guild.id, SETTING.ROLE_PREFIX)) === "true";
-        return shouldUsePrefix ? "I live in:" : "";
+        return shouldUsePrefix ? "I live in: " : "";
     }
 
     protected override async hasDuplicateRoles(member: GuildMember): Promise<boolean> {
