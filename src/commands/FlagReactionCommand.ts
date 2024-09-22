@@ -39,11 +39,11 @@ export class FlagReactionCommand {
                 if (!engine) {
                     continue;
                 }
-                const members = await reaction.users.fetch();
+                const members = reaction.users.cache;
                 for (const [userId] of members) {
                     const guildMember = message.guild?.members.resolve(userId);
                     if (guildMember) {
-                        await engine.handleReactionRemove(emoji.name, guildMember, reaction);
+                        await engine.handleReactionRemove(emoji.name, guildMember);
                     }
                 }
             }

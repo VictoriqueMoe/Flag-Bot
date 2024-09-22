@@ -16,6 +16,39 @@ export class ReactionListener {
     ) {}
 
     @On()
+    private async messageReactionRemoveAll([message, reactions]: ArgsOf<"messageReactionRemoveAll">): Promise<void> {
+        const messageOgPoser = message.member;
+        if (!messageOgPoser) {
+            return;
+        }
+        const type = await this.getTypeFomMessage(message.id, message.guildId!);
+        if (!type) {
+            return;
+        }
+        for (const [, reaction] of reactions) {
+            const emoji = reaction.emoji;
+            const flagEmoji = emoji.name;
+            if (!flagEmoji) {
+                continue;
+            }
+            const engine = this.flagManager.getEngineFromType(type);
+            if (!engine) {
+                continue;
+            }
+            const users = reaction.users.cache;
+            for (const [, user] of users) {
+                const guildMember = await reaction?.message?.guild?.members.fetch({
+                    user: user.id,
+                });
+                if (!guildMember || messageOgPoser.id !== guildMember?.guild?.members?.me?.id) {
+                    continue;
+                }
+                await engine.handleReactionRemove(flagEmoji, guildMember, reaction);
+            }
+        }
+    }
+
+    @On()
     private async messageReactionRemove([reaction, user]: ArgsOf<"messageReactionRemove">): Promise<void> {
         if (user.bot) {
             return;
@@ -44,11 +77,13 @@ export class ReactionListener {
         await engine.handleReactionRemove(flagEmoji, guildMember, reaction);
     }
 
-    private async getTypeFromReaction(
-        reaction: MessageReaction | PartialMessageReaction,
-    ): Promise<InteractionType | null> {
+    private getTypeFromReaction(reaction: MessageReaction | PartialMessageReaction): Promise<InteractionType | null> {
         const { message } = reaction;
-        const modelFromDb = await this.interactionRepo.getInteraction(message.guildId!, message.id);
+        return this.getTypeFomMessage(message.id, message.guildId!);
+    }
+
+    private async getTypeFomMessage(messageId: string, guildId: string): Promise<InteractionType | null> {
+        const modelFromDb = await this.interactionRepo.getInteraction(guildId, messageId);
         if (!modelFromDb) {
             return null;
         }

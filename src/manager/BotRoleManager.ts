@@ -79,11 +79,9 @@ export class BotRoleManager {
 
     public async getUsersWithRole(guildId: string, roleId: string): Promise<GuildMember[]> {
         const guild = await this.guildManager.getGuild(guildId);
-        const role = await guild.roles.fetch(roleId);
-        if (!role) {
-            return [];
-        }
-        const fetchedRole = await guild.roles.fetch(role.id);
+        const fetchedRole = await guild.roles.fetch(roleId, {
+            force: true,
+        });
         if (!fetchedRole) {
             return [];
         }

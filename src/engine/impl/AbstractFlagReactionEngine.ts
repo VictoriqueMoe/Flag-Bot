@@ -31,6 +31,10 @@ export abstract class AbstractFlagReactionEngine<T extends AbstractFlagModel> im
         } catch {
             return;
         }
+        await this.clearRoleBinding(guildMember, role);
+    }
+
+    protected async clearRoleBinding(guildMember: GuildMember, role: Role): Promise<void> {
         const usersWithRole = await this.botRoleManager.getUsersWithRole(guildMember.guild.id, role.id);
         if (usersWithRole.length === 0) {
             await this.botRoleManager.removeRoleBinding(guildMember.guild.id, role.id);

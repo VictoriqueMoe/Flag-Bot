@@ -39,28 +39,31 @@ export class LanguageFlagEngine extends AbstractFlagReactionEngine<LanguageModel
             return;
         }
         const roleName = role.name;
-        const reactedMessage = reaction!.message;
-        const reactionEmoji = reactedMessage.reactions.cache;
         let hasOtherLang = false;
-        for (const [, otherReaction] of reactionEmoji) {
-            const users = await otherReaction.users.fetch();
-            if (!users.has(guildMember.id)) {
-                continue;
-            }
-            const reactionName = otherReaction.emoji.name;
-            if (!reactionName) {
-                continue;
-            }
-            const roleFromEmoji = await this.getRoleFromFlag(reactionName, guildMember.guild.id);
-            if (roleFromEmoji && roleFromEmoji.name === roleName) {
-                hasOtherLang = true;
-                break;
+        if (reaction) {
+            const reactedMessage = reaction.message;
+            const reactionEmoji = reactedMessage.reactions.cache;
+            for (const [, otherReaction] of reactionEmoji) {
+                const users = await otherReaction.users.fetch();
+                if (!users.has(guildMember.id)) {
+                    continue;
+                }
+                const reactionName = otherReaction.emoji.name;
+                if (!reactionName) {
+                    continue;
+                }
+                const roleFromEmoji = await this.getRoleFromFlag(reactionName, guildMember.guild.id);
+                if (roleFromEmoji && roleFromEmoji.name === roleName) {
+                    hasOtherLang = true;
+                    break;
+                }
             }
         }
+
         if (!hasOtherLang) {
             await guildMember.roles.remove(role);
         }
-        return super.handleReactionRemove(flagEmoji, guildMember);
+        await super.clearRoleBinding(guildMember, role);
     }
 
     protected override async getRoleAndModel(countryInfo: CountryInfo, guild: Guild): Promise<[LanguageModel, Role]> {
