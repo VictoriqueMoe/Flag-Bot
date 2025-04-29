@@ -1,4 +1,9 @@
-import { CommandInteraction, InteractionReplyOptions, MessageComponentInteraction } from "discord.js";
+import {
+    CommandInteraction,
+    InteractionEditReplyOptions,
+    InteractionReplyOptions,
+    MessageComponentInteraction,
+} from "discord.js";
 
 export class ObjectUtil {
     public static guid(): string {
@@ -64,7 +69,7 @@ export async function replyOrFollowUp(
 
     // if interaction is deferred but not replied
     if (interaction.deferred) {
-        await interaction.editReply(replyOptions);
+        await interaction.editReply(replyOptions as InteractionEditReplyOptions);
         return;
     }
 
